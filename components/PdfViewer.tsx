@@ -1,7 +1,13 @@
 "use client"
 
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from "react"
-import { useResizeObserver } from "@wojtekmaj/react-hooks"
+import {
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { pdfjs, Document, Outline, Page } from "react-pdf"
 import { FixedSizeList as List, FixedSizeList } from "react-window"
 import AutoSizer from "react-virtualized-auto-sizer"
@@ -14,8 +20,8 @@ import "./test.css"
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
 import { DBSchema, openDB } from "idb"
 import React from "react"
-import clsx from "clsx"
 import Image from "next/image"
+import { useResizeObserver } from "@wojtekmaj/react-hooks"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -32,10 +38,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString()
 
-const resizeObserverOptions = {}
-
-const maxWidth = 1600
-
 type PDFFile = string | File | null
 
 type PdfViewerProps = {
@@ -45,30 +47,33 @@ type PdfViewerProps = {
 export default function PdfViewer({ pdfTest }: PdfViewerProps) {
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
-  const [pageNumber, setPageNumber] = useState(1)
+  const currPageIndexRef = useRef<number>(0)
   const [pageHeight, setPageHeight] = useState<number>()
   const [pageWidth, setPageWidth] = useState<number>()
-  const [containerRef, setContainerRef] = useState<HTMLElement | null>(null)
-  const [containerWidth, setContainerWidth] = useState<number>()
+  const [listElement, setListElement] = useState<Element | null>(null)
+  const [outerListRef, setOuterListRef] = useState<HTMLElement | null>(null)
+  const [isListRefReady, setIsListRefReady] = useState(false)
+  // const [listRef, setListRef] = useState<any| null>(null);
 
-  const [isHovered, setIsHovered] = useState(false)
+  const visibleItemsRef = useRef({ start: 0, stop: 0 })
+  const overscanItemsRef = useRef({ start: 0, stop: 0 })
 
   const listRef = React.createRef<FixedSizeList<any>>()
+  const lastChangeRef = useRef<"start" | "stop" | null>(null)
+  // const outerListRef = React.createRef<Element>()
 
   useEffect(() => {
     if (pdfTest) {
       setFile(new Blob([pdfTest], { type: "application/pdf" }))
-      listRef.current?.scrollToItem(10, "start")
     }
   }, [pdfTest])
 
-  const onResize = useCallback<ResizeObserverCallback>((entries) => {
-    const [entry] = entries
-
-    if (entry) {
-      setContainerWidth(entry.contentRect.width)
+  useEffect(() => {
+    if (listRef?.current) {
+      console.log("listRef is set")
+      setIsListRefReady(true)
     }
-  }, [])
+  }, [listRef.current])
 
   const options = useMemo(
     () => ({
@@ -78,7 +83,12 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
     [],
   )
 
-  // useResizeObserver(containerRef, resizeObserverOptions, onResize)
+  const onResize = useCallback<ResizeObserverCallback>(() => {
+    listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
+    console.log("onResize")
+  }, [listRef])
+
+  useResizeObserver(outerListRef, {}, onResize)
 
   async function onFileChange(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -153,12 +163,6 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
       })
   }
 
-  function onItemClick({ pageNumber: itemPageNumber }: { pageNumber: number }) {
-    // setPageNumber(itemPageNumber)
-    listRef.current?.scrollToItem(itemPageNumber - 1, "start")
-  }
-
-
   const renderPage = ({
     index,
     width,
@@ -166,52 +170,26 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
   }: {
     index: number
     width: number
-    style?: CSSProperties
+    style: CSSProperties
   }) => (
     <div
       className={` ${index !== 0 && "border-t-[16px]"} border-t-slate-200/40`}
       style={style}
     >
-      <Page pageNumber={index + 1} width={width - 16} />
-      {/* <div className="border-8 border-[#d9dddd]"></div> */}
+      <Page
+        pageNumber={index + 1}
+        width={width - 16}
+        onError={() => "An error occurred in the Page component"}
+        onGetStructTreeError={(error) =>
+          "An error occurred in the Page component"
+        }
+      />
     </div>
   )
 
-  const Row = ({
-    index,
-    style = { border: "1px solid #d9dddd" },
-  }: {
-    index: number
-    style?: CSSProperties
-  }) => (
-    <div
-      className={`page-shadow mx-1 my-4 ${index % 2 ? "ListItemOdd" : "ListItemEven"}`}
+  
 
-      // style={style}
-    >
-      Row {index}
-    </div>
-  )
-
-  // return (
-  //   <div className="flex-auto flex-col items-center">
-  //     <AutoSizer>
-  //       {({ height, width }) => (
-  //         <List
-  //           className="List bg-slate-100/40"
-  //           height={height}
-  //           itemCount={1000}
-  //           itemSize={10}
-  //           width={width}
-  //         >
-  //           {Row}
-  //         </List>
-  //       )}
-  //     </AutoSizer>
-  //   </div>
-  // )
-
-  return true ? (
+  return (
     <div className="relative flex flex-auto flex-col items-center">
       {!pdfTest && (
         <div className="text-white">
@@ -224,75 +202,68 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
           const pageScale = width / (pageWidth || 1)
 
           return (
-            <div
-              className="Example__container__document custom-read-aloud flex-auto"
-              ref={setContainerRef}
-            >
-              <Document file={file} onLoadSuccess={onDocumentLoadSuccess}>
-                {numPages && (
-                  <>
-                    <div className="group absolute right-[16px] top-[24px] flex flex-col  z-50 min-h-24 min-w-24">
-                      <Image
-                        src="/toc.svg"
-                        alt="Table of Contents"
-                        className="self-end mr-[16px]"
-                        width={48}
-                        height={48}
-                      />
-                      <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
-                        <Outline onItemClick={onItemClick} />
+            <div className="Example__container__document custom-read-aloud flex-auto">
+              {true && (
+                <Document
+                  file={file}
+                  onItemClick={({ pageIndex }) => {
+                    if (listRef?.current) {
+                      // listRef.current.scrollToItem(3, "start")
+                      console.log("listRef.current is not null")
+                    } else {
+                      console.log("listRef.current is null")
+                    }
+                  }}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  options={options}
+                  onError={() => "An error occurred in the Document component"}
+                >
+                  {numPages && (
+                    <>
+                      <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
+                        <Image
+                          src="/toc.svg"
+                          alt="Table of Contents"
+                          className="mr-[16px] self-end"
+                          width={48}
+                          height={48}
+                        />
+                        <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
+                          <Outline
+                            onItemClick={({ pageIndex }) => {
+                              console.log("This prints first")
+                              listRef.current?.scrollToItem(pageIndex, "start")
+                              // set page index
+                              // switch boolean to ingore changes in Items rendered callback
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <List
-                      ref={listRef}
-                      className="bg-white"
-                      height={height}
-                      itemCount={numPages}
-                      itemSize={
-                        pageHeight ? pageHeight * pageScale : height * pageScale
-                      }
-                      width={width}
-                    >
-                      {({ index, style }) =>
-                        renderPage({ index, style, width })
-                      }
-                    </List>
-                    {listRef.current?.scrollToItem(10, "start")}
-                  </>
-                )}
-              </Document>
+                      <List
+                        ref={listRef}
+                        outerRef={setOuterListRef}
+                        className="bg-white"
+                        height={height}
+                        itemCount={numPages}
+                        itemSize={
+                          pageHeight
+                            ? pageHeight * pageScale
+                            : height * pageScale
+                        }
+                        width={width}
+                      >
+                        {({ index, style }) =>
+                          renderPage({ index, style, width })
+                        }
+                      </List>
+                    </>
+                  )}
+                </Document>
+              )}
             </div>
           )
         }}
       </AutoSizer>
-    </div>
-  ) : (
-    <div className="flex flex-auto flex-col items-center">
-      {!pdfTest && (
-        <div className="text-white">
-          <label htmlFor="file">Load from file:</label>{" "}
-          <input onChange={onFileChange} type="file" />
-        </div>
-      )}
-
-      <div
-        className="Example__container__document custom-read-aloud"
-        ref={setContainerRef}
-      >
-        <Document
-          file={file}
-          onLoadSuccess={onDocumentLoadSuccess}
-          options={options}
-        >
-          {Array.from(new Array(numPages), (el, index) => (
-            <Page
-              key={`page_${index + 1}`}
-              pageNumber={index + 1}
-              width={containerWidth ? containerWidth : maxWidth}
-            />
-          ))}
-        </Document>
-      </div>
     </div>
   )
 }
