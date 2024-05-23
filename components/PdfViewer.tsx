@@ -50,30 +50,22 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
   const currPageIndexRef = useRef<number>(0)
   const [pageHeight, setPageHeight] = useState<number>()
   const [pageWidth, setPageWidth] = useState<number>()
-  const [listElement, setListElement] = useState<Element | null>(null)
   const [outerListRef, setOuterListRef] = useState<HTMLElement | null>(null)
-  const [isListRefReady, setIsListRefReady] = useState(false)
-  // const [listRef, setListRef] = useState<any| null>(null);
 
   const visibleItemsRef = useRef({ start: 0, stop: 0 })
   const overscanItemsRef = useRef({ start: 0, stop: 0 })
+  const resizeOccured = useRef({value: false, count: 0})
 
   const listRef = React.createRef<FixedSizeList<any>>()
-  const lastChangeRef = useRef<"start" | "stop" | null>(null)
-  // const outerListRef = React.createRef<Element>()
+
+  // console.log('re-render occured');
+  
 
   useEffect(() => {
     if (pdfTest) {
       setFile(new Blob([pdfTest], { type: "application/pdf" }))
     }
   }, [pdfTest])
-
-  useEffect(() => {
-    if (listRef?.current) {
-      console.log("listRef is set")
-      setIsListRefReady(true)
-    }
-  }, [listRef.current])
 
   const options = useMemo(
     () => ({
@@ -85,7 +77,8 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
 
   const onResize = useCallback<ResizeObserverCallback>(() => {
     listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
-    console.log("onResize")
+    resizeOccured.current = {value: true, count: 4}
+    // console.log("onResize")
   }, [listRef])
 
   useResizeObserver(outerListRef, {}, onResize)
@@ -107,10 +100,6 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
     const viewport = firstPage.getViewport({ scale: 1 })
     setPageHeight(viewport.height)
     setPageWidth(viewport.width)
-
-    const outline = await pdf.getOutline()
-    console.log("outline:")
-    console.log(outline)
 
     const dbName = "PdfDatabase"
     const storeName = "pdfs"
@@ -181,13 +170,78 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
         width={width - 16}
         onError={() => "An error occurred in the Page component"}
         onGetStructTreeError={(error) =>
-          "An error occurred in the Page component"
+          "An error occurred in the Page component: " + error
         }
       />
     </div>
   )
 
-  
+  const handleItemsRendered = ({
+    overscanStartIndex,
+    overscanStopIndex,
+    visibleStartIndex,
+    visibleStopIndex,
+  }: {
+    overscanStartIndex: number
+    overscanStopIndex: number
+    visibleStartIndex: number
+    visibleStopIndex: number
+  }) => {
+
+    const prevVisibleStartValue = visibleItemsRef.current.start
+    const prevVisibleStopValue = visibleItemsRef.current.stop
+
+    if (prevVisibleStartValue !== visibleStartIndex || prevVisibleStopValue !== visibleStopIndex) {
+      visibleItemsRef.current = {
+        start: visibleStartIndex,
+        stop: visibleStopIndex,
+      }
+      // console.log("Visible items changed:", visibleStartIndex, visibleStopIndex)
+      if (resizeOccured.current.value) {
+        if (resizeOccured.current.count === 0) {
+          resizeOccured.current.value = false
+        }
+
+        resizeOccured.current.count--
+        // console.log(`resize occured...returning early. Current count: ${resizeOccured.current.count}`);
+        return
+      }
+
+      if (Math.abs(prevVisibleStartValue - visibleStartIndex) > 10 || Math.abs(prevVisibleStopValue - visibleStopIndex) > 10) return
+
+      
+
+
+      // could change logic slightly for mobile/smaller viewport down the line
+      if (prevVisibleStartValue < visibleStartIndex || prevVisibleStopValue < visibleStopIndex) {
+        currPageIndexRef.current = visibleStartIndex
+      } else if (prevVisibleStartValue > visibleStartIndex || prevVisibleStopValue > visibleStopIndex) {
+        currPageIndexRef.current = visibleStopIndex
+      }
+      // if boolean from on click is true, set to false and return
+    }
+
+    // console.log(`Current page: ${currPageIndexRef.current + 1}`);
+    
+
+
+    visibleItemsRef.current.start = visibleStartIndex
+    visibleItemsRef.current.stop = visibleStopIndex
+
+
+    if (
+      overscanItemsRef.current.start !== overscanStartIndex ||
+      overscanItemsRef.current.stop !== overscanStopIndex
+    ) {
+      // console.log('Overscan items changed:', overscanStartIndex, overscanStopIndex);
+      overscanItemsRef.current = {
+        start: overscanStartIndex,
+        stop: overscanStopIndex,
+      }
+    }
+    // console.log("------------------------------------------------------------")
+
+  }
 
   return (
     <div className="relative flex flex-auto flex-col items-center">
@@ -231,8 +285,9 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
                         <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
                           <Outline
                             onItemClick={({ pageIndex }) => {
-                              console.log("This prints first")
+                              // console.log("This prints first")
                               listRef.current?.scrollToItem(pageIndex, "start")
+                              currPageIndexRef.current = pageIndex
                               // set page index
                               // switch boolean to ingore changes in Items rendered callback
                             }}
@@ -251,6 +306,7 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
                             : height * pageScale
                         }
                         width={width}
+                        onItemsRendered={handleItemsRendered}
                       >
                         {({ index, style }) =>
                           renderPage({ index, style, width })
