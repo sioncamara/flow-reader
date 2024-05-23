@@ -54,12 +54,16 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
 
   const visibleItemsRef = useRef({ start: 0, stop: 0 })
   const overscanItemsRef = useRef({ start: 0, stop: 0 })
-  const resizeOccured = useRef({value: false, count: 0})
+  const resizeOccured = useRef({ value: false, count: 0 })
 
-  const listRef = React.createRef<FixedSizeList<any>>()
+  // const listRef = React.createRef<FixedSizeList<any>>()
+  const listRef = useRef<FixedSizeList<any> | null>(null)
+
+  const setListRef = (ref: FixedSizeList<any> | null) => {
+    listRef.current = ref
+  }
 
   // console.log('re-render occured');
-  
 
   useEffect(() => {
     if (pdfTest) {
@@ -77,7 +81,7 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
 
   const onResize = useCallback<ResizeObserverCallback>(() => {
     listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
-    resizeOccured.current = {value: true, count: 4}
+    resizeOccured.current = { value: true, count: 4 }
     // console.log("onResize")
   }, [listRef])
 
@@ -187,11 +191,13 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
     visibleStartIndex: number
     visibleStopIndex: number
   }) => {
-
     const prevVisibleStartValue = visibleItemsRef.current.start
     const prevVisibleStopValue = visibleItemsRef.current.stop
 
-    if (prevVisibleStartValue !== visibleStartIndex || prevVisibleStopValue !== visibleStopIndex) {
+    if (
+      prevVisibleStartValue !== visibleStartIndex ||
+      prevVisibleStopValue !== visibleStopIndex
+    ) {
       visibleItemsRef.current = {
         start: visibleStartIndex,
         stop: visibleStopIndex,
@@ -207,27 +213,31 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
         return
       }
 
-      if (Math.abs(prevVisibleStartValue - visibleStartIndex) > 10 || Math.abs(prevVisibleStopValue - visibleStopIndex) > 10) return
-
-      
-
+      if (
+        Math.abs(prevVisibleStartValue - visibleStartIndex) > 10 ||
+        Math.abs(prevVisibleStopValue - visibleStopIndex) > 10
+      )
+        return
 
       // could change logic slightly for mobile/smaller viewport down the line
-      if (prevVisibleStartValue < visibleStartIndex || prevVisibleStopValue < visibleStopIndex) {
+      if (
+        prevVisibleStartValue < visibleStartIndex ||
+        prevVisibleStopValue < visibleStopIndex
+      ) {
         currPageIndexRef.current = visibleStartIndex
-      } else if (prevVisibleStartValue > visibleStartIndex || prevVisibleStopValue > visibleStopIndex) {
+      } else if (
+        prevVisibleStartValue > visibleStartIndex ||
+        prevVisibleStopValue > visibleStopIndex
+      ) {
         currPageIndexRef.current = visibleStopIndex
       }
       // if boolean from on click is true, set to false and return
     }
 
     // console.log(`Current page: ${currPageIndexRef.current + 1}`);
-    
-
 
     visibleItemsRef.current.start = visibleStartIndex
     visibleItemsRef.current.stop = visibleStopIndex
-
 
     if (
       overscanItemsRef.current.start !== overscanStartIndex ||
@@ -240,7 +250,6 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
       }
     }
     // console.log("------------------------------------------------------------")
-
   }
 
   return (
@@ -261,12 +270,8 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
                 <Document
                   file={file}
                   onItemClick={({ pageIndex }) => {
-                    if (listRef?.current) {
-                      // listRef.current.scrollToItem(3, "start")
-                      console.log("listRef.current is not null")
-                    } else {
-                      console.log("listRef.current is null")
-                    }
+                    listRef?.current?.scrollToItem(pageIndex, "start")
+                    currPageIndexRef.current = pageIndex
                   }}
                   onLoadSuccess={onDocumentLoadSuccess}
                   options={options}
@@ -295,7 +300,7 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
                         </div>
                       </div>
                       <List
-                        ref={listRef}
+                        ref={setListRef}
                         outerRef={setOuterListRef}
                         className="bg-white"
                         height={height}
