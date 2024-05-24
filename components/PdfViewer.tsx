@@ -42,9 +42,10 @@ type PDFFile = string | File | null
 
 type PdfViewerProps = {
   pdfTest?: Uint8Array
+  fingerprint?: string
 }
 
-export default function PdfViewer({ pdfTest }: PdfViewerProps) {
+export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
   const currPageIndexRef = useRef<number>(0)
@@ -70,6 +71,16 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
       setFile(new Blob([pdfTest], { type: "application/pdf" }))
     }
   }, [pdfTest])
+
+  useEffect(() => {
+    if (fingerprint) {
+      const storedPageIndex = localStorage.getItem(`pageIndex-${fingerprint}`)
+      if (storedPageIndex) {
+        currPageIndexRef.current = parseInt(storedPageIndex, 10)
+        listRef.current?.scrollToItem(currPageIndexRef.current, "start")
+      }
+    }
+  }, [fingerprint])
 
   const options = useMemo(
     () => ({
@@ -225,13 +236,22 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
         prevVisibleStopValue < visibleStopIndex
       ) {
         currPageIndexRef.current = visibleStartIndex
+        if (fingerprint)
+          localStorage.setItem(
+            `pageIndex-${fingerprint}`,
+            currPageIndexRef.current.toString(),
+          )
       } else if (
         prevVisibleStartValue > visibleStartIndex ||
         prevVisibleStopValue > visibleStopIndex
       ) {
         currPageIndexRef.current = visibleStopIndex
+        if (fingerprint)
+          localStorage.setItem(
+            `pageIndex-${fingerprint}`,
+            currPageIndexRef.current.toString(),
+          )
       }
-      // if boolean from on click is true, set to false and return
     }
 
     // console.log(`Current page: ${currPageIndexRef.current + 1}`);
@@ -272,6 +292,11 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
                   onItemClick={({ pageIndex }) => {
                     listRef?.current?.scrollToItem(pageIndex, "start")
                     currPageIndexRef.current = pageIndex
+                    if (fingerprint)
+                      localStorage.setItem(
+                        `pageIndex-${fingerprint}`,
+                        currPageIndexRef.current.toString(),
+                      )
                   }}
                   onLoadSuccess={onDocumentLoadSuccess}
                   options={options}
@@ -293,6 +318,11 @@ export default function PdfViewer({ pdfTest }: PdfViewerProps) {
                               // console.log("This prints first")
                               listRef.current?.scrollToItem(pageIndex, "start")
                               currPageIndexRef.current = pageIndex
+                              if (fingerprint)
+                                localStorage.setItem(
+                                  `pageIndex-${fingerprint}`,
+                                  currPageIndexRef.current.toString(),
+                                )
                               // set page index
                               // switch boolean to ingore changes in Items rendered callback
                             }}
