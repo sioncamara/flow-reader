@@ -15,14 +15,12 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css"
 import "react-pdf/dist/esm/Page/TextLayer.css"
 import "@/components/PdfViewer.css"
 
-import "./test.css"
-
-import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist"
+import type { PDFDocumentProxy } from "pdfjs-dist"
 import { DBSchema, openDB } from "idb"
 import React from "react"
 import Image from "next/image"
 import { useResizeObserver } from "@wojtekmaj/react-hooks"
-import { useSpeech } from "react-text-to-speech"
+import { processSpan, setAriaHiddenAttribute, getCoverImage } from "@/lib/utils"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -42,38 +40,35 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 type PDFFile = string | File | null
 
 type PdfViewerProps = {
-  pdfTest?: Uint8Array
+  providedPdf?: Uint8Array
   fingerprint?: string
 }
 
-export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
+export default function PdfViewer({
+  providedPdf,
+  fingerprint,
+}: PdfViewerProps) {
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
   const currPageIndexRef = useRef<number>(0)
   const [pageHeight, setPageHeight] = useState<number>()
   const [pageWidth, setPageWidth] = useState<number>()
   const [outerListRef, setOuterListRef] = useState<HTMLElement | null>(null)
-
-  const [highlightText, setHighlightText] = useState(true)
+  const [hasOutline, setHasOutline] = useState<boolean>(false)
 
   const visibleItemsRef = useRef({ start: 0, stop: 0 })
-  const overscanItemsRef = useRef({ start: 0, stop: 0 })
   const resizeOccured = useRef({ value: false, count: 0 })
-
-  // const listRef = React.createRef<FixedSizeList<any>>()
   const listRef = useRef<FixedSizeList<any> | null>(null)
 
   const setListRef = (ref: FixedSizeList<any> | null) => {
     listRef.current = ref
   }
 
-  // console.log('re-render occured');
-
   useEffect(() => {
-    if (pdfTest) {
-      setFile(new Blob([pdfTest], { type: "application/pdf" }))
+    if (providedPdf) {
+      setFile(new Blob([providedPdf], { type: "application/pdf" }))
     }
-  }, [pdfTest])
+  }, [providedPdf])
 
   useEffect(() => {
     if (fingerprint) {
@@ -96,7 +91,6 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
   const onResize = useCallback<ResizeObserverCallback>(() => {
     listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
     resizeOccured.current = { value: true, count: 4 }
-    // console.log("onResize")
   }, [listRef])
 
   useResizeObserver(outerListRef, {}, onResize)
@@ -106,13 +100,10 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
   ): Promise<void> {
     const { files } = event.target
     if (!files || !files[0]) return
-
-    const pdfFile = files[0]
-
-    setFile(pdfFile)
+    setFile(files[0])
   }
 
-  async function onDocumentLoadSuccess(pdf: PDFDocumentProxy): Promise<void> {
+  async function storePdf(pdf: PDFDocumentProxy): Promise<void> {
     setNumPages(pdf.numPages)
     const firstPage = await pdf.getPage(1)
     const viewport = firstPage.getViewport({ scale: 1 })
@@ -121,6 +112,9 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
 
     const dbName = "PdfDatabase"
     const storeName = "pdfs"
+
+    const outline = await pdf.getOutline()
+    setHasOutline(outline !== null)
 
     try {
       const db = await openDB<PdfStore>(dbName)
@@ -143,157 +137,56 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
     }
   }
 
-  async function getCoverImage(page: PDFPageProxy): Promise<string> {
-    var scale = 1.5
-    var viewport = page.getViewport({ scale: scale })
+  function hideRepeateText() {
+    const pages = document.querySelectorAll(".react-pdf__Page")
+    const textCountMap: { [key: string]: number } = {}
 
-    const canvas = document.createElement("canvas")
-    const context = canvas.getContext("2d")
-    if (!context) throw new Error("Error generating canvas context")
+    // this function has runs for around 10 pages at a time and runs almost everytime to user moves the page
+    // it's not efficient, but gets the job done for now
 
-    canvas.width = viewport.width
-    canvas.height = viewport.height
+    pages.forEach((page) => {
+      const textLayer = page.querySelector(
+        ".react-pdf__Page__textContent.textLayer",
+      )
+      if (textLayer) {
+        const spans = textLayer.querySelectorAll('span[role="presentation"]')
+        if (spans.length >= 5) {
+          const firstSpan = spans[0]
+          const secondSpan = spans[1]
+          const thirdToLastSpan = spans[spans.length - 3]
+          const secondToLastSpan = spans[spans.length - 2]
+          const lastSpan = spans[spans.length - 1]
 
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport,
-    }
-
-    return page
-      .render(renderContext)
-      .promise.then(() => {
-        const dataURL = canvas.toDataURL("image/png")
-        return dataURL
-      })
-      .catch((error) => {
-        throw error
-      })
-  }
-
-  const memoizedPageContent = useMemo(() => {
-    const PageContent = (index: number, width: number) => (
-      <Page
-        pageNumber={index + 1}
-        width={width - 16}
-        onError={() => "An error occurred in the Page component"}
-        onGetStructTreeError={(error) =>
-          "An error occurred in the Page component: " + error
+          processSpan(firstSpan, 1, textCountMap)
+          processSpan(secondSpan, 2, textCountMap)
+          processSpan(thirdToLastSpan, 3, textCountMap)
+          processSpan(secondToLastSpan, 4, textCountMap)
+          processSpan(lastSpan, 5, textCountMap)
         }
-      />
-    )
-    PageContent.displayName = "PageContent"
-    return PageContent
-  }, [])
-
-  const PageWithSpeech: React.FC<{
-    PageContent: JSX.Element
-    highlightText: boolean
-  }> = ({ PageContent, highlightText }) => {
-    const { Text, speechStatus, start, pause, stop } = useSpeech({
-      text: PageContent,
-      highlightText,
-      highlightProps: { style: { color: "white", backgroundColor: "blue" } },
+      }
     })
 
-    return (
-      <>
-        {/* {PageContent} */}
-        <Text />
-        <div className="absolute left-8 top-8 z-50 flex gap-8 pb-5">
-          {speechStatus !== "started" ? (
-            <button onClick={start}>Start</button>
-          ) : (
-            <button onClick={pause}>Pause</button>
-          )}
-          <button onClick={stop}>Stop</button>
-          <button onClick={() => setHighlightText(!highlightText)}>
-            Toggle Highlight Text
-          </button>
-        </div>
-      </>
-    )
-  }
-
-  function handleRenderTextLayerSuccess() {
-    const pages = document.querySelectorAll('.react-pdf__Page');
-    const textCountMap: { [key: string]: number } = {};
-  
     pages.forEach((page) => {
-      const textLayer = page.querySelector('.react-pdf__Page__textContent.textLayer');
+      const textLayer = page.querySelector(
+        ".react-pdf__Page__textContent.textLayer",
+      )
       if (textLayer) {
-        console.log(`Text layer found for page ${page.getAttribute('data-page-number')}`);
-        const spans = textLayer.querySelectorAll('span[role="presentation"]');
+        const spans = textLayer.querySelectorAll('span[role="presentation"]')
         if (spans.length >= 5) {
-          const firstSpan = spans[0];
-          const secondSpan = spans[1];
-          const thirdToLastSpan = spans[spans.length - 3];
-          const secondToLastSpan = spans[spans.length - 2];
-          const lastSpan = spans[spans.length - 1];
-  
-          // Process the first, second, third-to-last, second-to-last, and last spans
-          processSpan(firstSpan, 1, textCountMap);
-          processSpan(secondSpan, 2, textCountMap);
-          processSpan(thirdToLastSpan, 3, textCountMap);
-          processSpan(secondToLastSpan, 4, textCountMap);
-          processSpan(lastSpan, 5, textCountMap);
+          const firstSpan = spans[0]
+          const secondSpan = spans[1]
+          const thirdToLastSpan = spans[spans.length - 3]
+          const secondToLastSpan = spans[spans.length - 2]
+          const lastSpan = spans[spans.length - 1]
+
+          setAriaHiddenAttribute(firstSpan, 1, textCountMap)
+          setAriaHiddenAttribute(secondSpan, 2, textCountMap)
+          setAriaHiddenAttribute(thirdToLastSpan, 3, textCountMap)
+          setAriaHiddenAttribute(secondToLastSpan, 4, textCountMap)
+          setAriaHiddenAttribute(lastSpan, 5, textCountMap)
         }
       }
-    });
-
-    console.log(textCountMap);
-  
-    // Process spans and set aria-hidden attribute based on text count and number check
-    pages.forEach((page) => {
-      const textLayer = page.querySelector('.react-pdf__Page__textContent.textLayer');
-      if (textLayer) {
-        const spans = textLayer.querySelectorAll('span[role="presentation"]');
-        if (spans.length >= 5) {
-          const firstSpan = spans[0];
-          const secondSpan = spans[1];
-          const thirdToLastSpan = spans[spans.length - 3];
-          const secondToLastSpan = spans[spans.length - 2];
-          const lastSpan = spans[spans.length - 1];
-  
-          setAriaHiddenAttribute(firstSpan, 1, textCountMap);
-          setAriaHiddenAttribute(secondSpan, 2, textCountMap);
-          setAriaHiddenAttribute(thirdToLastSpan, 3, textCountMap);
-          setAriaHiddenAttribute(secondToLastSpan, 4, textCountMap);
-          setAriaHiddenAttribute(lastSpan, 5, textCountMap);
-        }
-      }
-    });
-  }
-
-  function processSpan(
-    span: Element,
-    index: number,
-    textCountMap: { [key: string]: number },
-  ) {
-    const text = span.textContent
-    if (text) {
-      const key = `${text}-${index}`
-      textCountMap[key] = (textCountMap[key] || 0) + 1
-    }
-  }
-
-  function setAriaHiddenAttribute(
-    span: Element,
-    index: number,
-    textCountMap: { [key: string]: number },
-  ) {
-    const text = span.textContent
-    if (text) {
-      const key = `${text}-${index}`
-      const count = textCountMap[key]
-
-      if (count > 1 || isNumberOnly(text)) {
-        span.setAttribute("aria-hidden", "true")
-      }
-    }
-  }
-
-  function isNumberOnly(text: string | null) {
-    return /^\d+$/.test(text || "")
+    })
   }
 
   const renderPage = ({
@@ -305,10 +198,6 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
     width: number
     style: CSSProperties
   }) => {
-    // const isCurrentPage = index === currPageIndexRef.current
-
-    // const pageContent = memoizedPageContent(index, width)
-
     return (
       <div
         className={` ${index !== 0 && "border-t-[16px]"} border-t-slate-200/40`}
@@ -317,38 +206,20 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
         <Page
           pageNumber={index + 1}
           width={width - 16}
-          onRenderSuccess={handleRenderTextLayerSuccess}
+          onRenderSuccess={hideRepeateText}
           onError={() => "An error occurred in the Page component"}
           onGetStructTreeError={(error) =>
             "An error occurred in the Page component: " + error
           }
         />
-
-        {/* <PageWithSpeech
-          PageContent={
-            <Page
-              pageNumber={index + 1}
-              width={width - 16}
-              onError={() => "An error occurred in the Page component"}
-              onGetStructTreeError={(error) =>
-                "An error occurred in the Page component: " + error
-              }
-            />
-          }
-          highlightText={highlightText}
-        /> */}
       </div>
     )
   }
 
   const handleItemsRendered = ({
-    overscanStartIndex,
-    overscanStopIndex,
     visibleStartIndex,
     visibleStopIndex,
   }: {
-    overscanStartIndex: number
-    overscanStopIndex: number
     visibleStartIndex: number
     visibleStopIndex: number
   }) => {
@@ -363,14 +234,12 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
         start: visibleStartIndex,
         stop: visibleStopIndex,
       }
-      // console.log("Visible items changed:", visibleStartIndex, visibleStopIndex)
       if (resizeOccured.current.value) {
         if (resizeOccured.current.count === 0) {
           resizeOccured.current.value = false
         }
 
         resizeOccured.current.count--
-        // console.log(`resize occured...returning early. Current count: ${resizeOccured.current.count}`);
         return
       }
 
@@ -404,27 +273,13 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
       }
     }
 
-    // console.log(`Current page: ${currPageIndexRef.current + 1}`);
-
     visibleItemsRef.current.start = visibleStartIndex
     visibleItemsRef.current.stop = visibleStopIndex
-
-    if (
-      overscanItemsRef.current.start !== overscanStartIndex ||
-      overscanItemsRef.current.stop !== overscanStopIndex
-    ) {
-      // console.log('Overscan items changed:', overscanStartIndex, overscanStopIndex);
-      overscanItemsRef.current = {
-        start: overscanStartIndex,
-        stop: overscanStopIndex,
-      }
-    }
-    // console.log("------------------------------------------------------------")
   }
 
   return (
     <div className="relative flex flex-auto flex-col items-center">
-      {!pdfTest && (
+      {!providedPdf && (
         <div className="text-white">
           <label htmlFor="file">Load from file:</label>{" "}
           <input onChange={onFileChange} type="file" />
@@ -436,24 +291,24 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
 
           return (
             <div className="Example__container__document custom-read-aloud flex-auto">
-              {true && (
-                <Document
-                  file={file}
-                  onItemClick={({ pageIndex }) => {
-                    listRef?.current?.scrollToItem(pageIndex, "start")
-                    currPageIndexRef.current = pageIndex
-                    if (fingerprint)
-                      localStorage.setItem(
-                        `pageIndex-${fingerprint}`,
-                        currPageIndexRef.current.toString(),
-                      )
-                  }}
-                  onLoadSuccess={onDocumentLoadSuccess}
-                  options={options}
-                  onError={() => "An error occurred in the Document component"}
-                >
-                  {numPages && (
-                    <>
+              <Document
+                file={file}
+                onItemClick={({ pageIndex }) => {
+                  listRef?.current?.scrollToItem(pageIndex, "start")
+                  currPageIndexRef.current = pageIndex
+                  if (fingerprint)
+                    localStorage.setItem(
+                      `pageIndex-${fingerprint}`,
+                      currPageIndexRef.current.toString(),
+                    )
+                }}
+                onLoadSuccess={storePdf}
+                options={options}
+                onError={() => "An error occurred in the Document component"}
+              >
+                {numPages && (
+                  <>
+                    {hasOutline && (
                       <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
                         <Image
                           src="/toc.svg"
@@ -465,7 +320,6 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
                         <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
                           <Outline
                             onItemClick={({ pageIndex }) => {
-                              // console.log("This prints first")
                               listRef.current?.scrollToItem(pageIndex, "start")
                               currPageIndexRef.current = pageIndex
                               if (fingerprint)
@@ -473,34 +327,30 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
                                   `pageIndex-${fingerprint}`,
                                   currPageIndexRef.current.toString(),
                                 )
-                              // set page index
-                              // switch boolean to ingore changes in Items rendered callback
                             }}
                           />
                         </div>
                       </div>
-                      <List
-                        ref={setListRef}
-                        outerRef={setOuterListRef}
-                        className="bg-white"
-                        height={height}
-                        itemCount={numPages}
-                        itemSize={
-                          pageHeight
-                            ? pageHeight * pageScale
-                            : height * pageScale
-                        }
-                        width={width}
-                        onItemsRendered={handleItemsRendered}
-                      >
-                        {({ index, style }) =>
-                          renderPage({ index, style, width })
-                        }
-                      </List>
-                    </>
-                  )}
-                </Document>
-              )}
+                    )}
+                    <List
+                      ref={setListRef}
+                      outerRef={setOuterListRef}
+                      className="bg-white"
+                      height={height}
+                      itemCount={numPages}
+                      itemSize={
+                        pageHeight ? pageHeight * pageScale : height * pageScale
+                      }
+                      width={width}
+                      onItemsRendered={handleItemsRendered}
+                    >
+                      {({ index, style }) =>
+                        renderPage({ index, style, width })
+                      }
+                    </List>
+                  </>
+                )}
+              </Document>
             </div>
           )
         }}
