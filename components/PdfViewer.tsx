@@ -22,6 +22,7 @@ import { DBSchema, openDB } from "idb"
 import React from "react"
 import Image from "next/image"
 import { useResizeObserver } from "@wojtekmaj/react-hooks"
+import { useSpeech } from "react-text-to-speech"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -52,6 +53,8 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
   const [pageHeight, setPageHeight] = useState<number>()
   const [pageWidth, setPageWidth] = useState<number>()
   const [outerListRef, setOuterListRef] = useState<HTMLElement | null>(null)
+
+  const [highlightText, setHighlightText] = useState(true)
 
   const visibleItemsRef = useRef({ start: 0, stop: 0 })
   const overscanItemsRef = useRef({ start: 0, stop: 0 })
@@ -167,19 +170,8 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
       })
   }
 
-  const renderPage = ({
-    index,
-    width,
-    style,
-  }: {
-    index: number
-    width: number
-    style: CSSProperties
-  }) => (
-    <div
-      className={` ${index !== 0 && "border-t-[16px]"} border-t-slate-200/40`}
-      style={style}
-    >
+  const memoizedPageContent = useMemo(() => {
+    const PageContent = (index: number, width: number) => (
       <Page
         pageNumber={index + 1}
         width={width - 16}
@@ -188,8 +180,166 @@ export default function PdfViewer({ pdfTest, fingerprint }: PdfViewerProps) {
           "An error occurred in the Page component: " + error
         }
       />
-    </div>
-  )
+    )
+    PageContent.displayName = "PageContent"
+    return PageContent
+  }, [])
+
+  const PageWithSpeech: React.FC<{
+    PageContent: JSX.Element
+    highlightText: boolean
+  }> = ({ PageContent, highlightText }) => {
+    const { Text, speechStatus, start, pause, stop } = useSpeech({
+      text: PageContent,
+      highlightText,
+      highlightProps: { style: { color: "white", backgroundColor: "blue" } },
+    })
+
+    return (
+      <>
+        {/* {PageContent} */}
+        <Text />
+        <div className="absolute left-8 top-8 z-50 flex gap-8 pb-5">
+          {speechStatus !== "started" ? (
+            <button onClick={start}>Start</button>
+          ) : (
+            <button onClick={pause}>Pause</button>
+          )}
+          <button onClick={stop}>Stop</button>
+          <button onClick={() => setHighlightText(!highlightText)}>
+            Toggle Highlight Text
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  function handleRenderTextLayerSuccess() {
+    const pages = document.querySelectorAll('.react-pdf__Page');
+    const textCountMap: { [key: string]: number } = {};
+  
+    pages.forEach((page) => {
+      const textLayer = page.querySelector('.react-pdf__Page__textContent.textLayer');
+      if (textLayer) {
+        console.log(`Text layer found for page ${page.getAttribute('data-page-number')}`);
+        const spans = textLayer.querySelectorAll('span[role="presentation"]');
+        if (spans.length >= 5) {
+          const firstSpan = spans[0];
+          const secondSpan = spans[1];
+          const thirdToLastSpan = spans[spans.length - 3];
+          const secondToLastSpan = spans[spans.length - 2];
+          const lastSpan = spans[spans.length - 1];
+  
+          // Process the first, second, third-to-last, second-to-last, and last spans
+          processSpan(firstSpan, 1, textCountMap);
+          processSpan(secondSpan, 2, textCountMap);
+          processSpan(thirdToLastSpan, 3, textCountMap);
+          processSpan(secondToLastSpan, 4, textCountMap);
+          processSpan(lastSpan, 5, textCountMap);
+        }
+      }
+    });
+
+    console.log(textCountMap);
+  
+    // Process spans and set aria-hidden attribute based on text count and number check
+    pages.forEach((page) => {
+      const textLayer = page.querySelector('.react-pdf__Page__textContent.textLayer');
+      if (textLayer) {
+        const spans = textLayer.querySelectorAll('span[role="presentation"]');
+        if (spans.length >= 5) {
+          const firstSpan = spans[0];
+          const secondSpan = spans[1];
+          const thirdToLastSpan = spans[spans.length - 3];
+          const secondToLastSpan = spans[spans.length - 2];
+          const lastSpan = spans[spans.length - 1];
+  
+          setAriaHiddenAttribute(firstSpan, 1, textCountMap);
+          setAriaHiddenAttribute(secondSpan, 2, textCountMap);
+          setAriaHiddenAttribute(thirdToLastSpan, 3, textCountMap);
+          setAriaHiddenAttribute(secondToLastSpan, 4, textCountMap);
+          setAriaHiddenAttribute(lastSpan, 5, textCountMap);
+        }
+      }
+    });
+  }
+
+  function processSpan(
+    span: Element,
+    index: number,
+    textCountMap: { [key: string]: number },
+  ) {
+    const text = span.textContent
+    if (text) {
+      const key = `${text}-${index}`
+      textCountMap[key] = (textCountMap[key] || 0) + 1
+    }
+  }
+
+  function setAriaHiddenAttribute(
+    span: Element,
+    index: number,
+    textCountMap: { [key: string]: number },
+  ) {
+    const text = span.textContent
+    if (text) {
+      const key = `${text}-${index}`
+      const count = textCountMap[key]
+
+      if (count > 1 || isNumberOnly(text)) {
+        span.setAttribute("aria-hidden", "true")
+      }
+    }
+  }
+
+  function isNumberOnly(text: string | null) {
+    return /^\d+$/.test(text || "")
+  }
+
+  const renderPage = ({
+    index,
+    width,
+    style,
+  }: {
+    index: number
+    width: number
+    style: CSSProperties
+  }) => {
+    // const isCurrentPage = index === currPageIndexRef.current
+
+    // const pageContent = memoizedPageContent(index, width)
+
+    return (
+      <div
+        className={` ${index !== 0 && "border-t-[16px]"} border-t-slate-200/40`}
+        style={style}
+      >
+        <Page
+          pageNumber={index + 1}
+          width={width - 16}
+          onRenderSuccess={handleRenderTextLayerSuccess}
+          onError={() => "An error occurred in the Page component"}
+          onGetStructTreeError={(error) =>
+            "An error occurred in the Page component: " + error
+          }
+        />
+
+        {/* <PageWithSpeech
+          PageContent={
+            <Page
+              pageNumber={index + 1}
+              width={width - 16}
+              onError={() => "An error occurred in the Page component"}
+              onGetStructTreeError={(error) =>
+                "An error occurred in the Page component: " + error
+              }
+            />
+          }
+          highlightText={highlightText}
+        /> */}
+      </div>
+    )
+  }
 
   const handleItemsRendered = ({
     overscanStartIndex,
