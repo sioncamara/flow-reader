@@ -150,18 +150,20 @@ export default function PdfViewer({
       )
       if (textLayer) {
         const spans = textLayer.querySelectorAll('span[role="presentation"]')
-        if (spans.length >= 5) {
+        if (spans.length >= 6) {
           const firstSpan = spans[0]
           const secondSpan = spans[1]
+          const thirdSpan = spans[2]
           const thirdToLastSpan = spans[spans.length - 3]
           const secondToLastSpan = spans[spans.length - 2]
           const lastSpan = spans[spans.length - 1]
 
           processSpan(firstSpan, 1, textCountMap)
           processSpan(secondSpan, 2, textCountMap)
-          processSpan(thirdToLastSpan, 3, textCountMap)
-          processSpan(secondToLastSpan, 4, textCountMap)
-          processSpan(lastSpan, 5, textCountMap)
+          processSpan(thirdSpan, 3, textCountMap)
+          processSpan(thirdToLastSpan, 4, textCountMap)
+          processSpan(secondToLastSpan, 5, textCountMap)
+          processSpan(lastSpan, 6, textCountMap)
         }
       }
     })
@@ -172,18 +174,20 @@ export default function PdfViewer({
       )
       if (textLayer) {
         const spans = textLayer.querySelectorAll('span[role="presentation"]')
-        if (spans.length >= 5) {
+        if (spans.length >= 6) {
           const firstSpan = spans[0]
           const secondSpan = spans[1]
+          const thirdSpan = spans[2]
           const thirdToLastSpan = spans[spans.length - 3]
           const secondToLastSpan = spans[spans.length - 2]
           const lastSpan = spans[spans.length - 1]
 
           setAriaHiddenAttribute(firstSpan, 1, textCountMap)
           setAriaHiddenAttribute(secondSpan, 2, textCountMap)
-          setAriaHiddenAttribute(thirdToLastSpan, 3, textCountMap)
-          setAriaHiddenAttribute(secondToLastSpan, 4, textCountMap)
-          setAriaHiddenAttribute(lastSpan, 5, textCountMap)
+          setAriaHiddenAttribute(thirdSpan, 3, textCountMap)
+          setAriaHiddenAttribute(thirdToLastSpan, 4, textCountMap)
+          setAriaHiddenAttribute(secondToLastSpan, 5, textCountMap)
+          setAriaHiddenAttribute(lastSpan, 6, textCountMap)
         }
       }
     })
@@ -317,16 +321,19 @@ export default function PdfViewer({
                           width={48}
                           height={48}
                         />
-                        <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
+                        <div className=" mr-5  max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
                           <Outline
-                            onItemClick={({ pageIndex }) => {
+                            className="space-y-6 rounded-lg bg-slate-100/30 p-4"
+                            onItemClick={({ pageIndex, dest }) => {
+                              console.log("Destination:", dest)
                               listRef.current?.scrollToItem(pageIndex, "start")
                               currPageIndexRef.current = pageIndex
-                              if (fingerprint)
+                              if (fingerprint) {
                                 localStorage.setItem(
                                   `pageIndex-${fingerprint}`,
                                   currPageIndexRef.current.toString(),
                                 )
+                              }
                             }}
                           />
                         </div>

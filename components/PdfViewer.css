@@ -57,16 +57,22 @@ msreadoutspan.msreadout-line-highlight:not(.msreadout-inactive-highlight) {
   align-items: center;
 }
 
-.Example__container__document .react-pdf__Page {
-  /* margin: 1em 0; */
-  /* box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); */
-}
 
 .page-shadow {
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
 
-/* .Example__container__document .react-pdf__message {
-  padding: 20px;
-  color: white;
-} */
+.react-pdf__Outline li > ul {
+  margin-left: 20px;
+}
+
+.react-pdf__Outline > li > ul > li > ul {
+  margin-left: 30px;
+}
+
+.react-pdf__Outline ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
