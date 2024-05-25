@@ -10,8 +10,11 @@ const fontSans = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "DoDo Reader",
-  description: "Read your PDFs like a book",
+  title: "Flow Reader",
+  description: "Read your PDFs like a book with Microsofts edge read aloud feature. An alternative to Natural reader",
+  icons: {
+    icon: '/flow-reader.png',
+  },
 }
 
 export default function RootLayout({
