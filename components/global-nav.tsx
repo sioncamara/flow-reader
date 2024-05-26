@@ -52,13 +52,13 @@ export function GlobalNav({
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-white sm:flex dark:border-slate-950 dark:bg-slate-950">
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <TooltipProvider>
-            <Link
+            {/* <Link
               className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-slate-900 text-lg font-semibold text-slate-50 md:h-8 md:w-8 md:text-base dark:bg-slate-50 dark:text-slate-900"
               href="/"
             >
               <Package2Icon className="h-4 w-4 transition-all group-hover:scale-110" />
               <span className="sr-only">DoDo Inc</span>
-            </Link>
+            </Link> */}
             {navOptions.map((item) => (
               <TooltipNavOption key={item.slug} item={item} />
             ))}
@@ -99,30 +99,30 @@ export function GlobalNav({
               side="left"
             >
               <nav className="grid gap-6 text-lg font-medium">
-                <Link
+                {/* <Link
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-slate-900 text-lg font-semibold text-slate-50 md:text-base dark:bg-slate-50 dark:text-slate-900"
                   href="#"
                 >
                   <Package2Icon className="h-5 w-5 transition-all group-hover:scale-110" />
                   <span className="sr-only">Acme Inc</span>
-                </Link>
+                </Link> */}
                 {navOptions.map((item) => (
                   <SheetNavOption key={item.slug} item={item} />
                 ))}
-                <Link
+                {/* <Link
                   className="flex items-center gap-4 px-2.5 text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-50"
                   href="#"
                 >
                   <SettingsIcon className="h-5 w-5" />
                   Settings
-                </Link>
+                </Link> */}
               </nav>
             </SheetContent>
           </Sheet>
           <div className="relative ml-auto flex-1 md:grow-0">
             <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500 dark:text-slate-400" />
             <Input
-              className="w-full rounded-lg bg-white pl-8 md:w-[200px] lg:w-[336px] dark:bg-slate-950"
+              className="w-full rounded-lg bg-white pl-8 md:w-[200px] lg:w-[336px] dark:bg-slate-950 dark:text-slate-50"
               placeholder="Search..."
               type="search"
             />
