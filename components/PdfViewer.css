@@ -1,3 +1,5 @@
+@tailwind utilities;
+
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
@@ -64,15 +66,18 @@ msreadoutspan.msreadout-line-highlight:not(.msreadout-inactive-highlight) {
 
 .react-pdf__Outline li > ul {
   margin-left: 20px;
+  @apply text-slate-600;
 }
 
 .react-pdf__Outline > li > ul > li > ul {
   margin-left: 30px;
+  @apply text-slate-400;
 }
 
-.react-pdf__Outline ul {
+.react-pdf__Outline > ul {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  @apply text-slate-800
 }
 

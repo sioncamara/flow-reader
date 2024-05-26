@@ -321,12 +321,10 @@ export default function PdfViewer({
                           width={48}
                           height={48}
                         />
-                        <div className=" mr-5  max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
+                        <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-96 group-hover:max-w-[800px] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
                           <Outline
                             className="space-y-6 rounded-lg bg-slate-100/30 p-4"
-                            onItemClick={({ pageIndex, dest }) => {
-                              console.log("Destination:", dest)
-                              listRef.current?.scrollToItem(pageIndex, "start")
+                            onItemClick={({ pageIndex}) => {                              listRef.current?.scrollToItem(pageIndex, "start")
                               currPageIndexRef.current = pageIndex
                               if (fingerprint) {
                                 localStorage.setItem(
