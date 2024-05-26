@@ -64,20 +64,30 @@ msreadoutspan.msreadout-line-highlight:not(.msreadout-inactive-highlight) {
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
 
-.react-pdf__Outline li > ul {
-  margin-left: 20px;
-  @apply text-slate-600;
+.react-pdf__Outline > ul > li > ul {
+  margin-left: 30px;
+  @apply text-slate-700 text-lg;
 }
 
-.react-pdf__Outline > li > ul > li > ul {
+.react-pdf__Outline > ul > li > ul > li > ul {
   margin-left: 30px;
-  @apply text-slate-400;
+  @apply text-slate-500 text-base;
+}
+
+.react-pdf__Outline > ul > li > ul > li > ul > li > ul {
+  margin-left: 30px;
+  @apply text-slate-500 text-sm;
+}
+
+.react-pdf__Outline > ul > li > ul > li > ul > li > ul > li > ul {
+  margin-left: 30px;
+  @apply text-slate-300 text-xs;
 }
 
 .react-pdf__Outline > ul {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  @apply text-slate-800
+  /* gap: 4px; */
+  @apply text-slate-900 text-xl
 }
 

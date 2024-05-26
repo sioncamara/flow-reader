@@ -55,7 +55,7 @@ export default function Home() {
 
   const xlScale = 1.5
   return (
-    <div className="flex min-h-full flex-wrap justify-center gap-x-10 gap-y-16">
+    <div className="flex flex-wrap justify-center gap-x-10 gap-y-16">
       {library.map(({ fingerprint, coverImage }) => (
         <BookCover
           key={fingerprint}
