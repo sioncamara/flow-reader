@@ -279,7 +279,7 @@ export default function PdfViewer({
   }
 
   return (
-    <div className="flex flex-auto flex-col ">
+    <div className="flex flex-auto flex-col pb-[16px]">
       {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
       <AutoSizer>
         {({ height, width }) => {
@@ -337,7 +337,7 @@ export default function PdfViewer({
                       <List
                         ref={setListRef}
                         outerRef={setOuterListRef}
-                        className="bg-white"
+                        className="mb-4 bg-white"
                         height={height}
                         itemCount={numPages}
                         itemSize={
