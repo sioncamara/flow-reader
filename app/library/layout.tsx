@@ -17,8 +17,8 @@ export default function LibraryLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col flex-auto">
-      <div className="flex self-end gap-4 pb-[60px]">
+    <div className="flex flex-auto flex-col pb-[16px]">
+      <div className="flex gap-4 self-end pb-[60px] pt-[16px]">
         <div className="relative ml-auto flex-1 md:grow-0">
           <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500 dark:text-slate-400" />
           <Input

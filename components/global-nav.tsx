@@ -8,19 +8,9 @@ import {
 } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { SheetTrigger, SheetContent, Sheet } from "@/components/ui/sheet"
-import { Input } from "@/components/ui/input"
-import {
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenu,
-} from "@/components/ui/dropdown-menu"
 import { CirclePlus, LibraryBig } from "lucide-react"
 import { useSelectedLayoutSegment } from "next/navigation"
 import clsx from "clsx"
-import Image from "next/image"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 
 type NavOption = {
@@ -81,7 +71,7 @@ export function GlobalNav({
           </TooltipProvider>
         </nav>
       </aside>
-      <div className="flex h-full flex-auto flex-col sm:gap-4 sm:py-4 sm:pl-14">
+      <div className="flex h-full flex-auto flex-col sm:gap-4  sm:pl-14">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-white px-4 sm:static sm:h-auto  sm:border-0 sm:bg-transparent sm:px-6 dark:border-slate-700 dark:bg-slate-900">
           <Sheet>
             <SheetTrigger asChild>
@@ -211,10 +201,6 @@ function SheetNavOption({ item }: { item: NavOption }) {
           },
         )}
         href={`/${item.slug}`}
-        // onClick={() => {
-        //   console.log('does this execute close')
-        //   close()
-        // }}
       >
         <span className="h-5 w-5">{item.icon}</span>
         <span>{item.label}</span>

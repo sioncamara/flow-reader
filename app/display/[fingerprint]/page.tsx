@@ -1,5 +1,5 @@
 "use client"
-import { useParams } from 'next/navigation';
+import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { openDB } from "idb"
 import PdfViewer from "@/components/PdfViewer"
@@ -33,7 +33,15 @@ const PdfPage = () => {
     fetchPdf()
   }, [fingerprint])
 
-  return <>{pdf ? <PdfViewer providedPdf={pdf} fingerprint={fingerprint as string} /> : <p>Loading PDF...</p>}</>
+  return (
+    <>
+      {pdf ? (
+        <PdfViewer providedPdf={pdf} fingerprint={fingerprint as string} />
+      ) : (
+        <p>Loading PDF...</p>
+      )}
+    </>
+  )
 }
 
 export default PdfPage

@@ -21,6 +21,7 @@ import React from "react"
 import Image from "next/image"
 import { useResizeObserver } from "@wojtekmaj/react-hooks"
 import { processSpan, setAriaHiddenAttribute, getCoverImage } from "@/lib/utils"
+import DragNdrop from "./DragNdrop"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -95,12 +96,8 @@ export default function PdfViewer({
 
   useResizeObserver(outerListRef, {}, onResize)
 
-  async function onFileChange(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ): Promise<void> {
-    const { files } = event.target
-    if (!files || !files[0]) return
-    setFile(files[0])
+  const onFilesSelected = (selectedFiles: File[]) => {
+    setFile(selectedFiles[0])
   }
 
   async function storePdf(pdf: PDFDocumentProxy): Promise<void> {
@@ -282,81 +279,85 @@ export default function PdfViewer({
   }
 
   return (
-    <div className="relative flex flex-auto flex-col items-center">
+    <div className="flex flex-auto flex-col ">
       {!providedPdf && (
-        <div className="text-white">
-          <label htmlFor="file">Load from file:</label>{" "}
-          <input onChange={onFileChange} type="file" />
-        </div>
+        <DragNdrop onFilesSelected={onFilesSelected} />
       )}
       <AutoSizer>
         {({ height, width }) => {
           const pageScale = width / (pageWidth || 1)
 
           return (
-            <div className="Example__container__document custom-read-aloud flex-auto">
-              <Document
-                file={file}
-                onItemClick={({ pageIndex }) => {
-                  listRef?.current?.scrollToItem(pageIndex, "start")
-                  currPageIndexRef.current = pageIndex
-                  if (fingerprint)
-                    localStorage.setItem(
-                      `pageIndex-${fingerprint}`,
-                      currPageIndexRef.current.toString(),
-                    )
-                }}
-                onLoadSuccess={storePdf}
-                options={options}
-                onError={() => "An error occurred in the Document component"}
-              >
-                {numPages && (
-                  <>
-                    {hasOutline && (
-                      <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
-                        <Image
-                          src="/toc.svg"
-                          alt="Table of Contents"
-                          className="mr-[16px] self-end"
-                          width={48}
-                          height={48}
-                        />
-                        <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:sm:max-h-[80vh] group-hover:xl:max-h-[90vh] group-hover:max-w-[80vw] group-hover:sm:max-w-[70vw] group-hover:xl:max-w-[70vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100">
-                          <Outline
-                            className="space-y-6 rounded-lg bg-slate-100/30 p-4"
-                            onItemClick={({ pageIndex }) => {
-                              listRef.current?.scrollToItem(pageIndex, "start")
-                              currPageIndexRef.current = pageIndex
-                              if (fingerprint) {
-                                localStorage.setItem(
-                                  `pageIndex-${fingerprint}`,
-                                  currPageIndexRef.current.toString(),
-                                )
-                              }
-                            }}
+            <div className="Example__container__document custom-read-aloud relative min-w-fit flex-auto">
+              {file && (
+                <Document
+                  file={file}
+                  onItemClick={({ pageIndex }) => {
+                    listRef?.current?.scrollToItem(pageIndex, "start")
+                    currPageIndexRef.current = pageIndex
+                    if (fingerprint)
+                      localStorage.setItem(
+                        `pageIndex-${fingerprint}`,
+                        currPageIndexRef.current.toString(),
+                      )
+                  }}
+                  onLoadSuccess={storePdf}
+                  options={options}
+                  onError={() => "An error occurred in the Document component"}
+                >
+                  {numPages && (
+                    <>
+                      {hasOutline && (
+                        <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
+                          <Image
+                            src="/toc.svg"
+                            alt="Table of Contents"
+                            className="mr-[16px] self-end"
+                            width={48}
+                            height={48}
                           />
+                          <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
+                            <Outline
+                              className="space-y-6 rounded-lg bg-slate-100/30 p-4"
+                              onItemClick={({ pageIndex }) => {
+                                listRef.current?.scrollToItem(
+                                  pageIndex,
+                                  "start",
+                                )
+                                currPageIndexRef.current = pageIndex
+                                if (fingerprint) {
+                                  localStorage.setItem(
+                                    `pageIndex-${fingerprint}`,
+                                    currPageIndexRef.current.toString(),
+                                  )
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    <List
-                      ref={setListRef}
-                      outerRef={setOuterListRef}
-                      className="bg-white"
-                      height={height}
-                      itemCount={numPages}
-                      itemSize={
-                        pageHeight ? pageHeight * pageScale : height * pageScale
-                      }
-                      width={width}
-                      onItemsRendered={handleItemsRendered}
-                    >
-                      {({ index, style }) =>
-                        renderPage({ index, style, width })
-                      }
-                    </List>
-                  </>
-                )}
-              </Document>
+                      )}
+                      <List
+                        ref={setListRef}
+                        outerRef={setOuterListRef}
+                        className="bg-white"
+                        height={height}
+                        itemCount={numPages}
+                        itemSize={
+                          pageHeight
+                            ? pageHeight * pageScale
+                            : height * pageScale
+                        }
+                        width={width}
+                        onItemsRendered={handleItemsRendered}
+                      >
+                        {({ index, style }) =>
+                          renderPage({ index, style, width })
+                        }
+                      </List>
+                    </>
+                  )}
+                </Document>
+              )}
             </div>
           )
         }}

@@ -59,35 +59,33 @@ msreadoutspan.msreadout-line-highlight:not(.msreadout-inactive-highlight) {
   align-items: center;
 }
 
-
 .page-shadow {
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
 
 .react-pdf__Outline > ul > li > ul {
   margin-left: 30px;
-  @apply text-slate-700 text-lg;
+  @apply text-lg text-slate-700;
 }
 
 .react-pdf__Outline > ul > li > ul > li > ul {
   margin-left: 30px;
-  @apply text-slate-500 text-base;
+  @apply text-base text-slate-500;
 }
 
 .react-pdf__Outline > ul > li > ul > li > ul > li > ul {
   margin-left: 30px;
-  @apply text-slate-500 text-sm;
+  @apply text-sm text-slate-500;
 }
 
 .react-pdf__Outline > ul > li > ul > li > ul > li > ul > li > ul {
   margin-left: 30px;
-  @apply text-slate-300 text-xs;
+  @apply text-xs text-slate-300;
 }
 
 .react-pdf__Outline > ul {
   display: flex;
   flex-direction: column;
   /* gap: 4px; */
-  @apply text-slate-900 text-xl
+  @apply text-xl text-slate-900;
 }
-

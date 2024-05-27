@@ -11,9 +11,10 @@ const fontSans = Inter({
 
 export const metadata: Metadata = {
   title: "Flow Reader",
-  description: "Read your PDFs like a book with Microsofts edge read aloud feature. An alternative to Natural reader",
+  description:
+    "Read your PDFs like a book with Microsofts edge read aloud feature. An alternative to Natural reader",
   icons: {
-    icon: '/flow-reader.png',
+    icon: "/flow-reader.png",
   },
 }
 
@@ -23,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="h-full bg-white">
+    <html lang="en" className="h-full bg-white dark:bg-slate-900">
       <body
         className={cn(
           "h-full bg-background font-sans antialiased",
