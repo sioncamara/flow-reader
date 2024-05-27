@@ -3,11 +3,13 @@ import React, { useEffect, useState } from "react"
 import { openDB, IDBPDatabase } from "idb"
 import { PdfStore } from "@/components/PdfViewer"
 import BookCover from "@/components/BookCover"
+import { redirect } from "next/navigation"
 
 export default function Home() {
   const [library, setLibrary] = useState<
     { fingerprint: string; coverImage: string }[]
   >([])
+  const [shouldRedirect, setShouldRedirect] = useState(false)
 
   useEffect(() => {
     let db: IDBPDatabase<PdfStore>
@@ -29,18 +31,21 @@ export default function Home() {
         const allImages = await store
           .getAll()
           .then((items) => items.map((item) => item.coverImage))
-
         const allFingerprints = await store.getAllKeys()
 
-        setLibrary(
-          allFingerprints.map((fingerprint, index) => ({
-            fingerprint,
-            coverImage: allImages[index],
-          })),
-        )
+        if (allFingerprints.length === 0) {
+          setShouldRedirect(true)
+        } else {
+          setLibrary(
+            allFingerprints.map((fingerprint, index) => ({
+              fingerprint,
+              coverImage: allImages[index],
+            })),
+          )
+        }
       } catch (error) {
         console.error("Failed to fetch images from database:", error)
-        setLibrary([])
+        setShouldRedirect(true)
       }
     }
 
@@ -52,6 +57,12 @@ export default function Home() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      redirect("/add-pdf")
+    }
+  }, [shouldRedirect])
 
   const xlScale = 1.5
   return (

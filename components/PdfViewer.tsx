@@ -280,9 +280,7 @@ export default function PdfViewer({
 
   return (
     <div className="flex flex-auto flex-col ">
-      {!providedPdf && (
-        <DragNdrop onFilesSelected={onFilesSelected} />
-      )}
+      {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
       <AutoSizer>
         {({ height, width }) => {
           const pageScale = width / (pageWidth || 1)
