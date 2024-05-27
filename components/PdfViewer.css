@@ -1,3 +1,5 @@
+@tailwind utilities;
+
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
@@ -57,22 +59,33 @@ msreadoutspan.msreadout-line-highlight:not(.msreadout-inactive-highlight) {
   align-items: center;
 }
 
-
 .page-shadow {
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
 
-.react-pdf__Outline li > ul {
-  margin-left: 20px;
-}
-
-.react-pdf__Outline > li > ul > li > ul {
+.react-pdf__Outline > ul > li > ul {
   margin-left: 30px;
+  @apply text-lg text-slate-700;
 }
 
-.react-pdf__Outline ul {
+.react-pdf__Outline > ul > li > ul > li > ul {
+  margin-left: 30px;
+  @apply text-base text-slate-500;
+}
+
+.react-pdf__Outline > ul > li > ul > li > ul > li > ul {
+  margin-left: 30px;
+  @apply text-sm text-slate-500;
+}
+
+.react-pdf__Outline > ul > li > ul > li > ul > li > ul > li > ul {
+  margin-left: 30px;
+  @apply text-xs text-slate-300;
+}
+
+.react-pdf__Outline > ul {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  /* gap: 4px; */
+  @apply text-xl text-slate-900;
 }
-
