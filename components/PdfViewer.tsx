@@ -190,6 +190,48 @@ export default function PdfViewer({
     })
   }
 
+  function combineSpans() {
+    const pages = document.querySelectorAll(".react-pdf__Page")
+
+    pages.forEach((page) => {
+      const textLayer = page.querySelector(
+        ".react-pdf__Page__textContent.textLayer",
+      )
+      if (textLayer) {
+        const spans = Array.from(
+          textLayer.querySelectorAll('span[role="presentation"]'),
+        )
+        let parentSpan: HTMLSpanElement | null = null
+
+        spans.forEach((span) => {
+          const nextSibling = span.nextElementSibling
+
+          if (
+            nextSibling &&
+            nextSibling.tagName === "SPAN" &&
+            nextSibling.getAttribute("role") === "presentation"
+          ) {
+            if (!parentSpan) {
+              parentSpan = document.createElement("span")
+              parentSpan.setAttribute("role", "presentation")
+              parentSpan.setAttribute("dir", "ltr")
+              parentSpan.style.cssText = (span as HTMLSpanElement).style.cssText
+              textLayer.insertBefore(parentSpan, span)
+            }
+            parentSpan.innerHTML += span.innerHTML + " "
+            span.remove()
+          } else {
+            if (parentSpan) {
+              parentSpan.innerHTML += span.innerHTML
+              span.remove()
+              parentSpan = null
+            }
+          }
+        })
+      }
+    })
+  }
+
   const renderPage = ({
     index,
     width,
@@ -207,7 +249,10 @@ export default function PdfViewer({
         <Page
           pageNumber={index + 1}
           width={width - 16}
-          onRenderSuccess={hideRepeateText}
+          onRenderSuccess={() => {
+            hideRepeateText()
+            combineSpans()
+          }}
           onError={() => "An error occurred in the Page component"}
           onGetStructTreeError={(error) =>
             "An error occurred in the Page component: " + error
@@ -286,7 +331,7 @@ export default function PdfViewer({
           const pageScale = width / (pageWidth || 1)
 
           return (
-            <div className="Example__container__document custom-read-aloud relative min-w-fit flex-auto">
+            <div className="custom-read-aloud relative min-w-fit flex-auto">
               {file && (
                 <Document
                   file={file}
