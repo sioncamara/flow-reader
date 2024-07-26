@@ -232,6 +232,115 @@ export default function PdfViewer({
     })
   }
 
+  function combineNestedSpans() {
+    const pages = document.querySelectorAll(".react-pdf__Page")
+
+    pages.forEach((page) => {
+      const textLayer = page.querySelector(
+        ".react-pdf__Page__textContent.textLayer",
+      )
+      if (textLayer) {
+        const markedContentSpans = textLayer.querySelectorAll(".markedContent")
+        markedContentSpans.forEach((markedContentSpan) => {
+          const nestedSpans = Array.from(
+            markedContentSpan.querySelectorAll('span[role="presentation"]'),
+          )
+          let parentSpan: HTMLSpanElement | null = null
+
+          nestedSpans.forEach((span) => {
+            const nextSibling = span.nextElementSibling
+
+            if (
+              nextSibling &&
+              nextSibling.tagName === "SPAN" &&
+              nextSibling.getAttribute("role") === "presentation"
+            ) {
+              if (!parentSpan) {
+                parentSpan = document.createElement("span")
+                parentSpan.setAttribute("role", "presentation")
+                parentSpan.setAttribute("dir", "ltr")
+                parentSpan.style.cssText = (
+                  span as HTMLSpanElement
+                ).style.cssText
+                if (span.parentNode === markedContentSpan) {
+                  markedContentSpan.insertBefore(parentSpan, span)
+                }
+              }
+              parentSpan.innerHTML += span.innerHTML + " "
+              span.remove()
+            } else {
+              if (parentSpan) {
+                parentSpan.innerHTML += span.innerHTML
+                span.remove()
+                parentSpan = null
+              }
+            }
+          })
+        })
+      }
+    })
+  }
+
+  function handleHyphenatedWords() {
+    const pages = document.querySelectorAll(".react-pdf__Page")
+
+    pages.forEach((page) => {
+      const textLayer = page.querySelector(
+        ".react-pdf__Page__textContent.textLayer",
+      )
+      if (!textLayer) return
+
+      const markedContentSpans = Array.from(
+        textLayer.querySelectorAll(".markedContent"),
+      )
+
+      markedContentSpans.forEach((markedContentSpan, markedIndex) => {
+        const hyphenSpan = markedContentSpan.querySelector(
+          'span[role="presentation"]',
+        )
+        if (hyphenSpan?.innerHTML.includes("references from them"))
+          console.log(hyphenSpan)
+
+        if (!hyphenSpan || hyphenSpan.innerHTML !== "-") return
+
+        const nextMarkedContentSpan = markedContentSpans[markedIndex + 1]
+        const nextSpan = nextMarkedContentSpan?.querySelector(
+          'span[role="presentation"]',
+        )
+        if (!nextSpan) return
+
+        const nextSpanText = nextSpan.innerHTML
+        if (nextSpanText.includes("references from them"))
+          console.log(nextSpanText)
+
+        const firstSpaceIndex = nextSpanText.indexOf(" ")
+
+        if (markedIndex > 0) {
+          const prevMarkedContentSpan = markedContentSpans[markedIndex - 1]
+          const prevSpan = prevMarkedContentSpan.querySelector(
+            'span[role="presentation"]',
+          )
+          if (!prevSpan) return
+
+          if (firstSpaceIndex !== -1) {
+            // Move the second half of the hyphenated word to the previous span
+            prevSpan.innerHTML +=
+              hyphenSpan.innerHTML.slice(0, -1) +
+              nextSpanText.slice(0, firstSpaceIndex)
+            // Update the next span to remove the moved part
+            nextSpan.innerHTML = nextSpanText.slice(firstSpaceIndex)
+          } else {
+            // If there's no space, move the entire next span content
+            prevSpan.innerHTML +=
+              hyphenSpan.innerHTML.slice(0, -1) + nextSpanText
+            nextSpan.remove()
+          }
+          markedContentSpan.remove()
+        }
+      })
+    })
+  }
+
   const renderPage = ({
     index,
     width,
@@ -251,6 +360,8 @@ export default function PdfViewer({
           width={width - 16}
           onRenderSuccess={() => {
             hideRepeateText()
+            combineNestedSpans()
+            handleHyphenatedWords()
             combineSpans()
           }}
           onError={() => "An error occurred in the Page component"}
