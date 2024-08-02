@@ -24,6 +24,14 @@ msreadoutspan.msreadout-line-highlight:not(.msreadout-inactive-highlight) {
   color: inherit !important;
   /* background: transparent !important; */
 }
+
+mark {
+  background: hsla(114, 98%, 68%, 0.2);
+  background-size: 110% 100%;
+  transform: scale(0.5);
+  color: transparent;
+}
+
 /* 
 @media (prefers-color-scheme: dark) {
   body {

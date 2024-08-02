@@ -1,0 +1,267 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { pdfjs, Document, Outline } from "react-pdf"
+import { FixedSizeList } from "react-window"
+import AutoSizer from "react-virtualized-auto-sizer"
+import "react-pdf/dist/esm/Page/AnnotationLayer.css"
+import "react-pdf/dist/esm/Page/TextLayer.css"
+import "@/components/PdfViewer/PdfViewer.css"
+
+import type { PDFDocumentProxy } from "pdfjs-dist"
+import { DBSchema, openDB } from "idb"
+import React from "react"
+import Image from "next/image"
+import { useResizeObserver } from "@wojtekmaj/react-hooks"
+import { getCoverImage } from "@/lib/utils"
+import DragNdrop from "../DragNdrop"
+import PdfPageList from "./PdfPageList"
+
+export type PdfStore = DBSchema & {
+  pdfs: {
+    key: string
+    value: {
+      pdfFile: Blob
+      coverImage: string
+    }
+  }
+}
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.js",
+  import.meta.url,
+).toString()
+
+type PDFFile = string | File | null
+
+type PdfViewerProps = {
+  providedPdf?: Uint8Array
+  fingerprint?: string
+}
+
+const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
+  const [file, setFile] = useState<PDFFile | Blob>("")
+  const [numPages, setNumPages] = useState<number>()
+  const currPageIndexRef = useRef<number>(0)
+  const [pageHeight, setPageHeight] = useState<number>()
+  const [pageWidth, setPageWidth] = useState<number>()
+  const [outerListRef, setOuterListRef] = useState<HTMLElement | null>(null)
+  const [hasOutline, setHasOutline] = useState<boolean>(false)
+
+  const visibleItemsRef = useRef({ start: 0, stop: 0 })
+  const resizeOccured = useRef({ value: false, count: 0 })
+  const listRef = useRef<FixedSizeList<any> | null>(null)
+
+  const setListRef = (ref: FixedSizeList<any> | null) => {
+    listRef.current = ref
+  }
+
+  useEffect(() => {
+    if (providedPdf) {
+      setFile(new Blob([providedPdf], { type: "application/pdf" }))
+    }
+  }, [providedPdf])
+
+  useEffect(() => {
+    if (fingerprint) {
+      const storedPageIndex = localStorage.getItem(`pageIndex-${fingerprint}`)
+      if (storedPageIndex) {
+        currPageIndexRef.current = parseInt(storedPageIndex, 10)
+        listRef.current?.scrollToItem(currPageIndexRef.current, "start")
+      }
+    }
+  }, [fingerprint])
+
+  const options = useMemo(
+    () => ({
+      cMapUrl: "/cmaps/",
+      standardFontDataUrl: "/standard_fonts/",
+    }),
+    [],
+  )
+
+  const onResize = useCallback<ResizeObserverCallback>(() => {
+    listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
+    resizeOccured.current = { value: true, count: 4 }
+  }, [listRef])
+
+  useResizeObserver(outerListRef, {}, onResize)
+
+  const onFilesSelected = (selectedFiles: File[]) => {
+    setFile(selectedFiles[0])
+  }
+
+  async function loadAndStorePdf(pdf: PDFDocumentProxy): Promise<void> {
+    setNumPages(pdf.numPages)
+    const firstPage = await pdf.getPage(1)
+    const viewport = firstPage.getViewport({ scale: 1 })
+    setPageHeight(viewport.height)
+    setPageWidth(viewport.width)
+
+    const dbName = "PdfDatabase"
+    const storeName = "pdfs"
+
+    const outline = await pdf.getOutline()
+    setHasOutline(outline !== null)
+
+    try {
+      const db = await openDB<PdfStore>(dbName)
+      const fingerprint = pdf.fingerprints[0]
+
+      const existingEntry = await db.get(storeName, fingerprint)
+      if (existingEntry) {
+        console.log("PDF already stored in IndexedDB")
+        return
+      }
+
+      const buffer = await pdf.getData()
+      const blob = new Blob([buffer], { type: "application/pdf" })
+      const coverImage = await getCoverImage(await pdf.getPage(1))
+
+      await db.add(storeName, { pdfFile: blob, coverImage }, fingerprint)
+      console.log("PDF & Image stored in IndexedDB")
+    } catch (error) {
+      console.error("Error storing PDF in IndexedDB:", error)
+    }
+  }
+
+  const handleItemsRendered = ({
+    visibleStartIndex,
+    visibleStopIndex,
+  }: {
+    visibleStartIndex: number
+    visibleStopIndex: number
+  }) => {
+    const prevVisibleStartValue = visibleItemsRef.current.start
+    const prevVisibleStopValue = visibleItemsRef.current.stop
+
+    if (
+      prevVisibleStartValue !== visibleStartIndex ||
+      prevVisibleStopValue !== visibleStopIndex
+    ) {
+      visibleItemsRef.current = {
+        start: visibleStartIndex,
+        stop: visibleStopIndex,
+      }
+      if (resizeOccured.current.value) {
+        if (resizeOccured.current.count === 0) {
+          resizeOccured.current.value = false
+        }
+
+        resizeOccured.current.count--
+        return
+      }
+
+      if (
+        Math.abs(prevVisibleStartValue - visibleStartIndex) > 10 ||
+        Math.abs(prevVisibleStopValue - visibleStopIndex) > 10
+      )
+        return
+
+      // could change logic slightly for mobile/smaller viewport down the line
+      if (
+        prevVisibleStartValue < visibleStartIndex ||
+        prevVisibleStopValue < visibleStopIndex
+      ) {
+        currPageIndexRef.current = visibleStartIndex
+        if (fingerprint)
+          localStorage.setItem(
+            `pageIndex-${fingerprint}`,
+            currPageIndexRef.current.toString(),
+          )
+      } else if (
+        prevVisibleStartValue > visibleStartIndex ||
+        prevVisibleStopValue > visibleStopIndex
+      ) {
+        currPageIndexRef.current = visibleStopIndex
+        if (fingerprint)
+          localStorage.setItem(
+            `pageIndex-${fingerprint}`,
+            currPageIndexRef.current.toString(),
+          )
+      }
+    }
+
+    visibleItemsRef.current.start = visibleStartIndex
+    visibleItemsRef.current.stop = visibleStopIndex
+  }
+
+  return (
+    <div className="flex flex-auto flex-col pb-[16px]">
+      {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
+      <AutoSizer>
+        {({ height, width }) => {
+          const pageScale = width / (pageWidth || 1)
+
+          return (
+            <div className="custom-read-aloud relative min-w-fit flex-auto">
+              {file && (
+                <Document
+                  file={file}
+                  onItemClick={({ pageIndex }) => {
+                    listRef?.current?.scrollToItem(pageIndex, "start")
+                    currPageIndexRef.current = pageIndex
+                    if (fingerprint)
+                      localStorage.setItem(
+                        `pageIndex-${fingerprint}`,
+                        currPageIndexRef.current.toString(),
+                      )
+                  }}
+                  onLoadSuccess={loadAndStorePdf}
+                  options={options}
+                  onError={() => "An error occurred in the Document component"}
+                >
+                  {numPages && (
+                    <>
+                      {hasOutline && (
+                        <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
+                          <Image
+                            src="/toc.svg"
+                            alt="Table of Contents"
+                            className="mr-[16px] self-end"
+                            width={48}
+                            height={48}
+                          />
+                          <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
+                            <Outline
+                              className="space-y-6 rounded-lg bg-slate-100/30 p-4"
+                              onItemClick={({ pageIndex }) => {
+                                listRef.current?.scrollToItem(
+                                  pageIndex,
+                                  "start",
+                                )
+                                currPageIndexRef.current = pageIndex
+                                if (fingerprint) {
+                                  localStorage.setItem(
+                                    `pageIndex-${fingerprint}`,
+                                    currPageIndexRef.current.toString(),
+                                  )
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <PdfPageList
+                        height={height}
+                        width={width}
+                        numPages={numPages}
+                        pageHeight={pageHeight}
+                        pageScale={pageScale}
+                        handleItemsRendered={handleItemsRendered}
+                        setListRef={setListRef}
+                        setOuterListRef={setOuterListRef}
+                      />
+                    </>
+                  )}
+                </Document>
+              )}
+            </div>
+          )
+        }}
+      </AutoSizer>
+    </div>
+  )
+}
+
+export default PdfViewer
