@@ -17,11 +17,6 @@ type PDFPageProps = {
   style: CSSProperties
 }
 
-const highlightPattern = (text: string, pattern: string) => {
-  // console.log("text:", text);
-  return text.replace(pattern, (value: any) => `<mark>${value}</mark>`)
-}
-
 const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   const remoteState = useRemoteStore((state) => state.remoteState)
   const [searchText, setSearchText] = useState("")
@@ -33,14 +28,14 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     "Microsoft Guy Online (Natural) - English (United States)",
   )
   const [isPaused, setIsPaused] = useState(false)
-  const [rate, setRate] = useState(1.5)
+  const [rate, setRate] = useState(1.2)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const currentWordIndexRef = useRef(0)
 
-  const textRenderer = useCallback((props: any) => {
-    // console.log("customTextRenderer props:", props);
-    return highlightPattern(props.str, searchText);
-  }, [searchText]);
+  const pageRef = useRef<HTMLDivElement>(null)
+  const lastHighlightedWord = useRef<HTMLElement | null>(null)
+  const textContentRef = useRef<string>("")
+  const currentCharIndexRef = useRef<number>(0)
 
   function onChange(event: {
     target: { value: React.SetStateAction<string> }
@@ -48,7 +43,7 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     setSearchText(event.target.value)
   }
 
-  const { start } = useSpeech({
+  const { start, stop} = useSpeech({
     text: combinedText,
     lang,
     voiceURI,
@@ -59,28 +54,38 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     },
     onBoundary: (event) => {
       if (event.name === "word") {
-        currentWordIndexRef.current = event.charIndex
+        console.log("event:", event)
+
+        currentCharIndexRef.current = event.charIndex
+        const currentWord = event.utterance.text.slice(
+          event.charIndex,
+          event.charIndex + event.charLength,
+        )
+        console.log("currentWord:", currentWord)
+        console.log("event.charIndex:", event.charIndex)
+        highlightCurrentWord(currentWord, event.charIndex)
       }
     },
     onError: (error) => {
       console.error("Speech synthesis error:", error)
+      setIsPaused(false)
 
-      if (utteranceRef.current && window.speechSynthesis.speaking) {
-        const currentIndex = currentWordIndexRef.current
-        window.speechSynthesis.cancel()
+      // if (utteranceRef.current && window.speechSynthesis.speaking) {
+      //   const currentIndex = currentWordIndexRef.current
+      //   window.speechSynthesis.cancel()
 
-        const newUtterance = createUtterance(combinedText, currentIndex)
-        utteranceRef.current = newUtterance
+      //   const newUtterance = createUtterance(combinedText, currentIndex)
+      //   utteranceRef.current = newUtterance
 
-        window.speechSynthesis.speak(newUtterance)
+      //   window.speechSynthesis.speak(newUtterance)
 
-        console.log(
-          "Speech synthesis encountered an error. Attempting to resume...",
-        )
-      } else {
-        setIsPaused(false)
-        console.log("Speech synthesis encountered an error and has stopped.")
-      }
+      //   console.log(
+      //     "Speech synthesis encountered an error. Attempting to resume...",
+      //   )
+      // } else {
+      //   setIsPaused(false)
+      //   console.log("Speech synthesis encountered an error and has stopped.")
+      // }
     },
     onResume: (event) => {
       console.log("Speech Resumed:", event)
@@ -96,6 +101,62 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
       console.log("Queue updated:", queue)
     },
   })
+
+
+  const highlightCurrentWord = useCallback(
+    (word: string, charIndex: number) => {
+      if (pageRef.current) {
+        const textLayer = pageRef.current.querySelector(".textLayer")
+        if (textLayer) {
+          if (lastHighlightedWord.current) {
+     
+            lastHighlightedWord.current.outerHTML = lastHighlightedWord.current.innerHTML;
+          }
+
+          let accumulatedLength = 0
+          const textNodes = Array.from(
+            textLayer.querySelectorAll('span[role="presentation"]'),
+          )
+
+          for (let i = 0; i < textNodes.length; i++) {
+            const node = textNodes[i]
+            const nodeText = node.textContent || ""
+            
+            // Add a space to accumulated length if this isn't the first node
+            if (i > 0) accumulatedLength += 1
+          
+            if (
+              charIndex >= accumulatedLength &&
+              charIndex < accumulatedLength + nodeText.length
+            ) {
+              const localIndex = charIndex - accumulatedLength
+
+              console.log("accumulatedLength:", accumulatedLength)
+              console.log("localIndex:", localIndex)
+              console.log("nodeText:", nodeText)
+
+              const localWord = nodeText.slice(
+                localIndex,
+                localIndex + word.length
+              )
+              console.log("localWord:", localWord)
+              if (localWord === word) {
+                const range = document.createRange()
+                range.setStart(node.firstChild!, localIndex)
+                range.setEnd(node.firstChild!, localIndex + word.length)
+                const highlightSpan = document.createElement("mark")
+                range.surroundContents(highlightSpan)
+                lastHighlightedWord.current = highlightSpan
+                break
+              }
+            }
+            accumulatedLength += nodeText.length
+          }
+        }
+      }
+    },
+    [],
+  )
 
   const createUtterance = (
     text: string,
@@ -148,62 +209,76 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     changeRate(newRate)
   }
 
-  const handleStartReading = useCallback(() => {
-    const status = getSpeechStatus()
-    console.log("Speech status:", status)
+  const getTextContent = (textContent: TextContent) => {
+    // console.log("textContent:", textContent)
+    const fullText = textContent.items
+  .filter((item): item is TextItem => "str" in item && item.str !== '')
+      .map((item) => item.str)
+      .join(" ")
 
-    if (status.paused) {
-      window.speechSynthesis.cancel() // Clear any paused speech
-    }
+    // console.log("fullText:", fullText)
+      
 
-    if (status.speaking || status.pending) {
-      window.speechSynthesis.cancel() // Stop any ongoing speech
-    }
+    textContentRef.current = fullText
+    setCombinedText(fullText)
 
-    const combinedText = sentences.join(" ")
-    setCombinedText(combinedText)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentences])
+    // const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g
+    // const sentences = fullText.match(sentenceRegex) || []
+    // const trimmedSentences = sentences.map((sentence) => sentence.trim())
+    // const nonEmptySentences = trimmedSentences.filter(
+    //   (sentence) => sentence.length > 0,
+    // )
 
-  const getSpeechStatus = () => {
-    return {
-      speaking: window.speechSynthesis.speaking,
-      pending: window.speechSynthesis.pending,
-      paused: window.speechSynthesis.paused,
-    }
+    // console.log("nonEmptySentences:", nonEmptySentences)
+    
+
+    // setSentences(nonEmptySentences)
   }
 
-  useEffect(() => {
-    if (combinedText) {
-      start()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combinedText])
+  const handleStartReading = () => {
+    // const status = getSpeechStatus()
+    // console.log("Speech status:", status)
+
+    // if (status.paused) {
+    //   window.speechSynthesis.cancel() // Clear any paused speech
+    // }
+
+    // if (status.speaking || status.pending) {
+    //   window.speechSynthesis.cancel() // Stop any ongoing speech
+    // }
+    window.speechSynthesis.cancel()
+    start()
+
+    // const combinedText = sentences.join(" ")
+    // setCombinedText(combinedText)
+    // // eslint-disable-next-line react-hooks/exhaustive-deps
+  }
+
+  // const getSpeechStatus = () => {
+  //   return {
+  //     speaking: window.speechSynthesis.speaking,
+  //     pending: window.speechSynthesis.pending,
+  //     paused: window.speechSynthesis.paused,
+  //   }
+  // }
+
+  // useEffect(() => {
+  //   if (combinedText) {
+  //     start()
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [combinedText])
 
   return (
     <div
+      ref={pageRef}
       className={` ${index !== 0 && "border-t-[16px]"} border-t-slate-200/40`}
       style={style}
     >
       <Page
         pageNumber={index + 1}
         width={width - 16}
-        customTextRenderer={ textRenderer}
-        onGetTextSuccess={(textContent: TextContent) => {
-          const fullText = textContent.items
-            .filter((item): item is TextItem => "str" in item)
-            .map((item) => item.str)
-            .join(" ")
-
-          const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g
-          const sentences = fullText.match(sentenceRegex) || []
-          const trimmedSentences = sentences.map((sentence) => sentence.trim())
-          const nonEmptySentences = trimmedSentences.filter(
-            (sentence) => sentence.length > 0,
-          )
-
-          setSentences(nonEmptySentences)
-        }}
+        onGetTextSuccess={getTextContent}
         onRenderSuccess={() => {
           hideRepeateText()
           combineNestedSpans()
@@ -303,6 +378,7 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
         >
           Pause
         </button>
+        <button onClick={stop}>Stop</button>
         <button onClick={increaseRate}>Increase Rate</button>
         <div className="flex flex-col items-center">
           <label htmlFor="rate-slider" className="text-sm">
