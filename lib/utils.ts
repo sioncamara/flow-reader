@@ -65,7 +65,6 @@ export async function getCoverImage(page: PDFPageProxy): Promise<string> {
     })
 }
 
-
 export function hideRepeateText() {
   const pages = document.querySelectorAll(".react-pdf__Page")
   const textCountMap: { [key: string]: number } = {}
@@ -122,7 +121,7 @@ export function hideRepeateText() {
   })
 }
 
-export   function combineNestedSpans() {
+export function combineNestedSpans() {
   const pages = document.querySelectorAll(".react-pdf__Page")
 
   pages.forEach((page) => {
@@ -149,9 +148,7 @@ export   function combineNestedSpans() {
               parentSpan = document.createElement("span")
               parentSpan.setAttribute("role", "presentation")
               parentSpan.setAttribute("dir", "ltr")
-              parentSpan.style.cssText = (
-                span as HTMLSpanElement
-              ).style.cssText
+              parentSpan.style.cssText = (span as HTMLSpanElement).style.cssText
               if (span.parentNode === markedContentSpan) {
                 markedContentSpan.insertBefore(parentSpan, span)
               }
@@ -171,7 +168,7 @@ export   function combineNestedSpans() {
   })
 }
 
-export   function handleHyphenatedWords() {
+export function handleHyphenatedWords() {
   const pages = document.querySelectorAll(".react-pdf__Page")
 
   pages.forEach((page) => {
@@ -221,8 +218,7 @@ export   function handleHyphenatedWords() {
           nextSpan.innerHTML = nextSpanText.slice(firstSpaceIndex)
         } else {
           // If there's no space, move the entire next span content
-          prevSpan.innerHTML +=
-            hyphenSpan.innerHTML.slice(0, -1) + nextSpanText
+          prevSpan.innerHTML += hyphenSpan.innerHTML.slice(0, -1) + nextSpanText
           nextSpan.remove()
         }
         markedContentSpan.remove()
@@ -231,7 +227,7 @@ export   function handleHyphenatedWords() {
   })
 }
 
-export  function combineSpans() {
+export function combineSpans() {
   const pages = document.querySelectorAll(".react-pdf__Page")
 
   pages.forEach((page) => {
