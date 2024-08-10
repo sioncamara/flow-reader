@@ -21,7 +21,9 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   const remoteState = useRemoteStore((state) => state.remoteState)
   const [textLayer, setTextLayer] = useState<Element | null>(null)
   const [textNodes, setTextNodes] = useState<Element[]>([])
-  
+  const [charIndexToNodeMap, setCharIndexToNodeMap] = useState<{
+    [key: number]: { node: Element; localIndex: number }
+  } | null>(null)
 
   const [combinedText, setCombinedText] = useState<string>("")
   const { languages, voices } = useVoices()
@@ -30,7 +32,7 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     "Microsoft Guy Online (Natural) - English (United States)",
   )
   const [isPaused, setIsPaused] = useState(false)
-  const [rate, setRate] = useState(1.2)
+  const [rate, setRate] = useState(2.4)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const currentWordIndexRef = useRef(0)
 
@@ -122,60 +124,50 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
         textLayer.querySelectorAll('span[role="presentation"]'),
       )
       console.log("nodes:", nodes)
-      setTextNodes(nodes)
-      // setTextLayer(null)
+
+      // Preprocess nodes to create a mapping of character indices to nodes
+      const charIndexToNodeMap: {
+        [key: number]: { node: Element; localIndex: number }
+      } = {}
+      let accumulatedLength = 0
+
+      nodes.forEach((node, i) => {
+        const nodeText = node.textContent || ""
+        for (let j = 0; j < nodeText.length; j++) {
+          charIndexToNodeMap[accumulatedLength + j] = { node, localIndex: j }
+        }
+        accumulatedLength += nodeText.length + 1 // +1 for space between nodes
+      })
+
+      setCharIndexToNodeMap(charIndexToNodeMap)
     }
   }, [textLayer])
 
   const highlightCurrentWord = useCallback(
     (word: string, charIndex: number) => {
-      if (textNodes?.length > 0) {
+      if (charIndexToNodeMap) {
         if (lastHighlightedWord.current) {
           lastHighlightedWord.current.outerHTML =
             lastHighlightedWord.current.innerHTML
         }
 
-        let accumulatedLength = 0
+        const { node, localIndex } = charIndexToNodeMap[charIndex]
+        const localWord = node.textContent!.slice(
+          localIndex,
+          localIndex + word.length,
+        )
 
-        console.log("textNodes:", textNodes)
-
-        for (let i = 0; i < textNodes.length; i++) {
-          const node = textNodes[i]
-          const nodeText = node.textContent || ""
-
-          // Add a space to accumulated length if this isn't the first node
-          if (i > 0) accumulatedLength += 1
-
-          if (
-            charIndex >= accumulatedLength &&
-            charIndex < accumulatedLength + nodeText.length
-          ) {
-            const localIndex = charIndex - accumulatedLength
-
-            console.log("accumulatedLength:", accumulatedLength)
-            console.log("localIndex:", localIndex)
-            console.log("nodeText:", nodeText)
-
-            const localWord = nodeText.slice(
-              localIndex,
-              localIndex + word.length,
-            )
-            console.log("localWord:", localWord)
-            if (localWord === word) {
-              const range = document.createRange()
-              range.setStart(node.firstChild!, localIndex)
-              range.setEnd(node.firstChild!, localIndex + word.length)
-              const highlightSpan = document.createElement("mark")
-              range.surroundContents(highlightSpan)
-              lastHighlightedWord.current = highlightSpan
-              break
-            }
-          }
-          accumulatedLength += nodeText.length
+        if (localWord === word) {
+          const range = document.createRange()
+          range.setStart(node.firstChild!, localIndex)
+          range.setEnd(node.firstChild!, localIndex + word.length)
+          const highlightSpan = document.createElement("mark")
+          range.surroundContents(highlightSpan)
+          lastHighlightedWord.current = highlightSpan
         }
       }
     },
-    [textNodes],
+    [charIndexToNodeMap],
   )
 
   const createUtterance = (
@@ -372,4 +364,4 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   )
 }
 
-export default PdfPage
+export default React.memo(PdfPage)
