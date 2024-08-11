@@ -1,12 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef } from "react"
 import { Page } from "react-pdf"
+import { usePdfStore } from "@/store/usePdfStore"
 import { CSSProperties } from "react"
-import {
-  combineNestedSpans,
-  combineSpans,
-  handleHyphenatedWords,
-  hideRepeateText,
-} from "@/lib/utils"
 import { useRemoteStore } from "@/store/useRemoteStore"
 import { TextContent, TextItem } from "pdfjs-dist/types/src/display/api"
 import { useSpeech, useVoices } from "react-text-to-speech"
@@ -18,9 +13,9 @@ type PDFPageProps = {
 }
 
 const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
+  const { readingPageIndex } = usePdfStore()
+
   const remoteState = useRemoteStore((state) => state.remoteState)
-  const [textLayer, setTextLayer] = useState<Element | null>(null)
-  const [textNodes, setTextNodes] = useState<Element[]>([])
   const [charIndexToNodeMap, setCharIndexToNodeMap] = useState<{
     [key: number]: { node: Element; localIndex: number }
   } | null>(null)
@@ -42,6 +37,7 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   const lastHighlightedWord = useRef<HTMLElement | null>(null)
   const textContentRef = useRef<string>("")
   const currentCharIndexRef = useRef<number>(0)
+
 
   const { start, stop } = useSpeech({
     text: combinedText,
@@ -102,46 +98,89 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     },
   })
 
-  const loadTextNodes = () => {
-    if (pageRef.current) {
-      const textLayer = pageRef.current.querySelector(".textLayer")
-      setTextLayer(textLayer)
-
-      console.log("textLayer:", textLayer)
-      // if (textLayer) {
-      //   const nodes = Array.from(
-      //     textLayer.querySelectorAll('span[role="presentation"]'),
-      //   )
-      //   console.log("nodes:", nodes)
-      //   setTextNodes(nodes)
-      // }
+  useEffect(() => {
+    if (!pageRef.current || index !== readingPageIndex) {
+      // console.log(`Page: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`);
+      return
     }
-  }
+
+    console.log(
+      `Page: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`,
+    )
+
+    let timeoutId: NodeJS.Timeout
+    let attempts = 0
+    const maxAttempts = 20
+    const checkInterval = 250 // Check every 250ms
+
+    const checkForTextLayer = () => {
+      console.log("attempt ", attempts)
+    
+      const nodes = Array.from(
+        pageRef.current?.querySelectorAll('.textLayer span[role="presentation"]') || []
+      )
+    
+      if (nodes.length > 0) {
+        console.log("Text layer and presentation spans found")
+        processIndexToNodeMap(nodes)
+      } else if (attempts < maxAttempts) {
+        attempts++
+        timeoutId = setTimeout(checkForTextLayer, checkInterval)
+      } else {
+        console.log("Max attempts reached, text layer or presentation spans not found")
+      }
+    }
+
+    checkForTextLayer()
+
+    return () => {
+      console.log("Cleanup timeout")
+      clearTimeout(timeoutId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
-    if (textLayer) {
-      const nodes = Array.from(
-        textLayer.querySelectorAll('span[role="presentation"]'),
-      )
-      console.log("nodes:", nodes)
-
-      // Preprocess nodes to create a mapping of character indices to nodes
-      const charIndexToNodeMap: {
-        [key: number]: { node: Element; localIndex: number }
-      } = {}
-      let accumulatedLength = 0
-
-      nodes.forEach((node, i) => {
-        const nodeText = node.textContent || ""
-        for (let j = 0; j < nodeText.length; j++) {
-          charIndexToNodeMap[accumulatedLength + j] = { node, localIndex: j }
-        }
-        accumulatedLength += nodeText.length + 1 // +1 for space between nodes
-      })
-
-      setCharIndexToNodeMap(charIndexToNodeMap)
+    if (!pageRef.current || index !== readingPageIndex) {
+      return
     }
-  }, [textLayer])
+  
+    console.log(
+      `%cPage: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`,
+      'color: green; font-weight: bold;'
+    )
+  
+    const nodes = Array.from(
+      pageRef.current.querySelectorAll('.textLayer span[role="presentation"]') || []
+    )
+  
+    if (nodes.length > 0) {
+      processIndexToNodeMap(nodes)
+    } else {
+      console.log('No presentation spans found in the text layer')
+    }
+  
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readingPageIndex])
+
+  const processIndexToNodeMap = (nodes: Element[]) => {
+    // Preprocess nodes to create a mapping of character indices to nodes
+    const charIndexToNodeMap: {
+      [key: number]: { node: Element; localIndex: number }
+    } = {}
+    let accumulatedLength = 0
+
+    nodes.forEach((node, i) => {
+      const nodeText = node.textContent || ""
+      for (let j = 0; j < nodeText.length; j++) {
+        charIndexToNodeMap[accumulatedLength + j] = { node, localIndex: j }
+      }
+      accumulatedLength += nodeText.length + 1 // +1 for space between nodes
+    })
+
+    setCharIndexToNodeMap(charIndexToNodeMap)
+  }
+
 
   const highlightCurrentWord = useCallback(
     (word: string, charIndex: number) => {
@@ -255,15 +294,6 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
         pageNumber={index + 1}
         width={width - 16}
         onGetTextSuccess={getTextContent}
-        onRenderSuccess={() => {
-          hideRepeateText()
-          combineNestedSpans()
-          handleHyphenatedWords()
-          combineSpans()
-          if (textLayer === null) {
-            loadTextNodes()
-          }
-        }}
         onError={() => "An error occurred in the Page component"}
         onGetStructTreeError={(error) =>
           "An error occurred in the Page component: " + error
@@ -359,6 +389,14 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
             className="w-32"
           />
         </div>
+        <button
+          onClick={() => {
+            console.log("index:", index)
+            console.log("readingPageIndex:", readingPageIndex)
+          }}
+        >
+          print index
+        </button>
       </div>
     </div>
   )
