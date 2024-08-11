@@ -16,6 +16,7 @@ import { useResizeObserver } from "@wojtekmaj/react-hooks"
 import { getCoverImage } from "@/lib/utils"
 import DragNdrop from "../DragNdrop"
 import PdfPageList from "./PdfPageList"
+import { usePdfStore } from "@/store/usePdfStore"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -40,6 +41,8 @@ type PdfViewerProps = {
 }
 
 const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
+  const setReadingPageIndex = usePdfStore((state) => state.setReadingPageIndex)
+
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
   const currPageIndexRef = useRef<number>(0)
@@ -49,9 +52,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   const [hasOutline, setHasOutline] = useState<boolean>(false)
 
   const visibleItemsRef = useRef({ start: 0, stop: 0 })
-  const resizeOccured = useRef({ value: false, count: 0 })
   const listRef = useRef<FixedSizeList<any> | null>(null)
-
   const setListRef = (ref: FixedSizeList<any> | null) => {
     listRef.current = ref
   }
@@ -67,9 +68,15 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       const storedPageIndex = localStorage.getItem(`pageIndex-${fingerprint}`)
       if (storedPageIndex) {
         currPageIndexRef.current = parseInt(storedPageIndex, 10)
+        setReadingPageIndex(currPageIndexRef.current)
         listRef.current?.scrollToItem(currPageIndexRef.current, "start")
+        visibleItemsRef.current = {
+          start: currPageIndexRef.current,
+          stop: currPageIndexRef.current,
+        }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fingerprint])
 
   const options = useMemo(
@@ -82,7 +89,10 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
 
   const onResize = useCallback<ResizeObserverCallback>(() => {
     listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
-    resizeOccured.current = { value: true, count: 4 }
+    visibleItemsRef.current = {
+      start: currPageIndexRef.current,
+      stop: currPageIndexRef.current,
+    }
   }, [listRef])
 
   useResizeObserver(outerListRef, {}, onResize)
@@ -125,6 +135,23 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     }
   }
 
+  const handleTocSelect = useCallback(({pageIndex}: {pageIndex: number}) => {
+    listRef.current?.scrollToItem(pageIndex, "start")
+    currPageIndexRef.current = pageIndex
+    visibleItemsRef.current = {
+      start: pageIndex,
+      stop: pageIndex,
+    }
+    setReadingPageIndex(pageIndex)
+    if (fingerprint) {
+      localStorage.setItem(
+        `pageIndex-${fingerprint}`,
+        pageIndex.toString()
+      )
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleItemsRendered = ({
     visibleStartIndex,
     visibleStopIndex,
@@ -132,48 +159,62 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     visibleStartIndex: number
     visibleStopIndex: number
   }) => {
-    const prevVisibleStartValue = visibleItemsRef.current.start
-    const prevVisibleStopValue = visibleItemsRef.current.stop
+    const { start: prevVisibleStartValue, stop: prevVisibleStopValue } =
+      visibleItemsRef.current
+
+    console.log(
+      `Previous visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
+    )
 
     if (
       prevVisibleStartValue !== visibleStartIndex ||
       prevVisibleStopValue !== visibleStopIndex
     ) {
-      visibleItemsRef.current = {
-        start: visibleStartIndex,
-        stop: visibleStopIndex,
-      }
-      if (resizeOccured.current.value) {
-        if (resizeOccured.current.count === 0) {
-          resizeOccured.current.value = false
-        }
-
-        resizeOccured.current.count--
-        return
-      }
-
-      if (
-        Math.abs(prevVisibleStartValue - visibleStartIndex) > 10 ||
-        Math.abs(prevVisibleStopValue - visibleStopIndex) > 10
+  
+      console.log(
+        `%cPrevious visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
+        "color: turquoise; font-weight: bold;",
       )
-        return
 
-      // could change logic slightly for mobile/smaller viewport down the line
+      // on resize, will jump to far away page, and this function is run before the previous page index is stored in visibleItemsRef.current
+      // think it might run after too since if I remove I get brought to a new page on scroll
       if (
+        Math.abs(prevVisibleStartValue - visibleStartIndex) > 3 ||
+        Math.abs(prevVisibleStopValue - visibleStopIndex) > 3
+      ){
+        console.log("Programatically scrolled to a far away page")
+        return
+}
+      // could add logic specifically for mobile/smaller viewport down the line
+      const isScrollingDown =
         prevVisibleStartValue < visibleStartIndex ||
         prevVisibleStopValue < visibleStopIndex
-      ) {
-        currPageIndexRef.current = visibleStartIndex
+
+      const isScrollingUp =
+        prevVisibleStartValue > visibleStartIndex ||
+        prevVisibleStopValue > visibleStopIndex
+
+      if (isScrollingDown) {
+        currPageIndexRef.current = visibleStopIndex
+        setReadingPageIndex(currPageIndexRef.current)
+        console.log(
+          `%cDuring scroll down, reading page index set to: ${currPageIndexRef.current}`,
+          "color: blue; font-weight: bold;",
+        )
         if (fingerprint)
           localStorage.setItem(
             `pageIndex-${fingerprint}`,
             currPageIndexRef.current.toString(),
           )
-      } else if (
-        prevVisibleStartValue > visibleStartIndex ||
-        prevVisibleStopValue > visibleStopIndex
-      ) {
+      }
+
+      if (isScrollingUp) {
         currPageIndexRef.current = visibleStopIndex
+        setReadingPageIndex(currPageIndexRef.current)
+        console.log(
+          `%cDuring scroll up, reading page index set to: ${currPageIndexRef.current}`,
+          "color: blue; font-weight: bold;",
+        )
         if (fingerprint)
           localStorage.setItem(
             `pageIndex-${fingerprint}`,
@@ -181,9 +222,10 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
           )
       }
     }
-
-    visibleItemsRef.current.start = visibleStartIndex
-    visibleItemsRef.current.stop = visibleStopIndex
+    visibleItemsRef.current = {
+      start: visibleStartIndex,
+      stop: visibleStopIndex,
+    }
   }
 
   return (
@@ -198,15 +240,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
               {file && (
                 <Document
                   file={file}
-                  onItemClick={({ pageIndex }) => {
-                    listRef?.current?.scrollToItem(pageIndex, "start")
-                    currPageIndexRef.current = pageIndex
-                    if (fingerprint)
-                      localStorage.setItem(
-                        `pageIndex-${fingerprint}`,
-                        currPageIndexRef.current.toString(),
-                      )
-                  }}
+                  onItemClick={handleTocSelect}
                   onLoadSuccess={loadAndStorePdf}
                   options={options}
                   onError={() => "An error occurred in the Document component"}
@@ -225,19 +259,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
                           <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
                             <Outline
                               className="space-y-6 rounded-lg bg-slate-100/30 p-4"
-                              onItemClick={({ pageIndex }) => {
-                                listRef.current?.scrollToItem(
-                                  pageIndex,
-                                  "start",
-                                )
-                                currPageIndexRef.current = pageIndex
-                                if (fingerprint) {
-                                  localStorage.setItem(
-                                    `pageIndex-${fingerprint}`,
-                                    currPageIndexRef.current.toString(),
-                                  )
-                                }
-                              }}
+                              onItemClick={handleTocSelect}
                             />
                           </div>
                         </div>
