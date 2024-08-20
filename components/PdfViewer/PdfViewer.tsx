@@ -16,7 +16,8 @@ import { useResizeObserver } from "@wojtekmaj/react-hooks"
 import { getCoverImage } from "@/lib/utils"
 import DragNdrop from "../DragNdrop"
 import PdfPageList from "./PdfPageList"
-import { usePdfStore } from "@/store/usePdfStore"
+import SpeechController from "./SpeechController"
+import { useRemoteStore } from "@/store/useRemoteStore"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -41,7 +42,8 @@ type PdfViewerProps = {
 }
 
 const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
-  const setReadingPageIndex = usePdfStore((state) => state.setReadingPageIndex)
+  const setReadingPageIndex = useRemoteStore((state) => state.setReadingPageIndex)
+  const setCurrTextPageIndex = useRemoteStore((state) => state.setCurrTextPageIndex)
 
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
@@ -69,6 +71,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       if (storedPageIndex) {
         currPageIndexRef.current = parseInt(storedPageIndex, 10)
         setReadingPageIndex(currPageIndexRef.current)
+        setCurrTextPageIndex(currPageIndexRef.current)
         listRef.current?.scrollToItem(currPageIndexRef.current, "start")
         visibleItemsRef.current = {
           start: currPageIndexRef.current,
@@ -143,6 +146,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       stop: pageIndex,
     }
     setReadingPageIndex(pageIndex)
+    setCurrTextPageIndex(pageIndex)
     if (fingerprint) {
       localStorage.setItem(
         `pageIndex-${fingerprint}`,
@@ -162,19 +166,19 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     const { start: prevVisibleStartValue, stop: prevVisibleStopValue } =
       visibleItemsRef.current
 
-    console.log(
-      `Previous visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
-    )
+    // console.log(
+    //   `Previous visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
+    // )
 
     if (
       prevVisibleStartValue !== visibleStartIndex ||
       prevVisibleStopValue !== visibleStopIndex
     ) {
   
-      console.log(
-        `%cPrevious visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
-        "color: turquoise; font-weight: bold;",
-      )
+      // console.log(
+      //   `%cPrevious visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
+      //   "color: turquoise; font-weight: bold;",
+      // )
 
       // on resize, will jump to far away page, and this function is run before the previous page index is stored in visibleItemsRef.current
       // think it might run after too since if I remove I get brought to a new page on scroll
@@ -231,6 +235,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   return (
     <div className="flex flex-auto flex-col pb-[16px]">
       {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
+      <SpeechController />
       <AutoSizer>
         {({ height, width }) => {
           const pageScale = width / (pageWidth || 1)
