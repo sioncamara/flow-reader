@@ -1,7 +1,6 @@
 import React from "react"
 import { FixedSizeList } from "react-window"
 import PdfPage from "./PdfPage"
-import { useRemoteStore } from "@/store/useRemoteStore"
 
 type PdfPageListProps = {
   height: number
@@ -34,11 +33,8 @@ const PdfPageList: React.FC<PdfPageListProps> = ({
   setListRef,
   setOuterListRef,
 }) => {
-  console.log("PdfPageList")
-  const toggleRemoteState = useRemoteStore((state) => state.toggleRemoteState)
   return (
     <>
-      <button onClick={toggleRemoteState}>Toggle Remote State</button>
       <FixedSizeList
         ref={setListRef}
         outerRef={setOuterListRef}
