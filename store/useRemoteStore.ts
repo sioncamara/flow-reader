@@ -1,3 +1,4 @@
+import { FixedSizeList } from 'react-window';
 import { create } from 'zustand'
 
 type  CharIndexToNodeMap = {
@@ -28,6 +29,8 @@ type remoteState = {
   setVoiceURI: (voiceURI: string) => void
   setCombinedText: (text: string) => void
   setCharIndexToNodeMap: (charIndexToNodeMap: CharIndexToNodeMap) => void
+  listRef: FixedSizeList<any> | null
+  setListRef: (ref: FixedSizeList<any> | null) => void
 }
 
 export const useRemoteStore = create<remoteState>((set) => ({
@@ -42,6 +45,7 @@ export const useRemoteStore = create<remoteState>((set) => ({
   voiceURI: 'Microsoft Guy Online (Natural) - English (United States)',
   combinedText: '',
   charIndexToNodeMap: null,
+  listRef: null,
   setReadingPageIndex: (readingPageIndex) => set({ readingPageIndex }),
   setCurrTextPageIndex: (currTextPageIndex) => set({ currTextPageIndex }),
   setIsPaused: (isPaused) => set({ isPaused }),
@@ -53,4 +57,5 @@ export const useRemoteStore = create<remoteState>((set) => ({
   setVoiceURI: (voiceURI) => set({ voiceURI }),
   setCombinedText: (combinedText) => set({ combinedText }),
   setCharIndexToNodeMap: (charIndexToNodeMap) => set({ charIndexToNodeMap }),
+  setListRef: (listRef) => set({ listRef }),
 }))

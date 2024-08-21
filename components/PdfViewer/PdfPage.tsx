@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { Page } from "react-pdf"
 import { CSSProperties } from "react"
 import { useRemoteStore } from "@/store/useRemoteStore"
 import { TextContent, TextItem } from "pdfjs-dist/types/src/display/api"
-import { useVoices } from "react-text-to-speech"
 
 type PDFPageProps = {
   index: number
@@ -16,8 +15,8 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
 const isPlaying = useRemoteStore((state) => state.isPlaying)
 const setCurrTextPageIndex = useRemoteStore((state) => state.setCurrTextPageIndex)
 const currTextPageIndex = useRemoteStore((state) => state.currTextPageIndex)
-const remoteCharIndexToNodeMap = useRemoteStore((state) => state.charIndexToNodeMap)
-const setRemoteCharIndexToNodeMap = useRemoteStore((state) => state.setCharIndexToNodeMap)
+const charIndexToNodeMap = useRemoteStore((state) => state.charIndexToNodeMap)
+const setCharIndexToNodeMap = useRemoteStore((state) => state.setCharIndexToNodeMap)
 const readingPageIndex = useRemoteStore((state) => state.readingPageIndex)
 const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
 
@@ -80,12 +79,12 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
       return
     }
 
-    console.log(
-      `%cPage: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`,
-      "color: green; font-weight: bold;",
-    )
+    // console.log(
+    //   `%cPage: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`,
+    //   "color: green; font-weight: bold;",
+    // )
 
-    console.log(`readingPageIndex: ${readingPageIndex}, currTextPageIndex: ${currTextPageIndex}`);
+    // console.log(`readingPageIndex: ${readingPageIndex}, currTextPageIndex: ${currTextPageIndex}`);
     
 
     if (reachedUtteranceEnd || index === readingPageIndex && (!isPlaying)) {
@@ -121,7 +120,7 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
       accumulatedLength += nodeText.length + 1 // +1 for space between nodes
     })
     if (index === readingPageIndex)
-      setRemoteCharIndexToNodeMap(charIndexToNodeMap)
+      setCharIndexToNodeMap(charIndexToNodeMap)
   }
 
 
