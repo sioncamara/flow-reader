@@ -13,6 +13,7 @@ const SpeechController: React.FC = () => {
     voiceURI,
     combinedText,
     charIndexToNodeMap,
+    listRef,
     setReachedUtteranceEnd,
     setReadingPageIndex,
     setIsPaused,
@@ -48,6 +49,7 @@ const SpeechController: React.FC = () => {
         )
         // console.log("currentWord:", currentWord)
         // console.log("event.charIndex:", event.charIndex)
+        
         highlightCurrentWord(currentWord, event.charIndex)
         const isLastWord =
           event.charIndex + event.charLength >= event.utterance.text.length - 1
@@ -55,7 +57,7 @@ const SpeechController: React.FC = () => {
         // console.log('word end position:', event.charIndex + event.charLength);
         // console.log('text length:', event.utterance.text.length);
 
-        console.log("isLastWord:", isLastWord)
+        // console.log("isLastWord:", isLastWord)
         if (isLastWord) {
         // since this function is passed to a hook, the value of state variables at the time of fn pass will
         // be the same as the value at the time of fn execution even if store value updates through other means
@@ -89,15 +91,25 @@ const SpeechController: React.FC = () => {
 
     if (currTextPageIndex === readingPageIndex && isPlaying) {
       handlePlay()
+      listRef?.scrollToItem(currTextPageIndex, 'start')
       setReachedUtteranceEnd(false) // not sure if there is a point to this. Think there is it was just also being done within handlePlay. Makes more sense here.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTextPageIndex])
 
+  // bug: if user scrolls far enough from current page, and comes back highlighting will stop despite everying looking right
+  // my guess is that the auto list re-renders...nah that doesn't make much sense since the use effect should re-trigger.
+  // I'd say not worth the time unless users are complaining about it.
   const highlightCurrentWord = useCallback(
+    
     (word: string, charIndex: number) => {
+    //   console.log('charIndex:', charIndex);
+    //   console.log('word:', word);
+    //   console.log('charIndexToNodeMap:', charIndexToNodeMap);
       if (charIndexToNodeMap) {
         if (lastHighlightedWord.current) {
+            
+            
           try {
             lastHighlightedWord.current.outerHTML =
               lastHighlightedWord.current.innerHTML
@@ -115,6 +127,7 @@ const SpeechController: React.FC = () => {
         )
 
         if (localWord === word) {
+            console.log('word matches');
           const range = document.createRange()
           range.setStart(node.firstChild!, localIndex)
           range.setEnd(node.firstChild!, localIndex + word.length)

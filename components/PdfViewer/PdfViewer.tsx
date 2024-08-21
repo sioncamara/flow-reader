@@ -44,6 +44,7 @@ type PdfViewerProps = {
 const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   const setReadingPageIndex = useRemoteStore((state) => state.setReadingPageIndex)
   const setCurrTextPageIndex = useRemoteStore((state) => state.setCurrTextPageIndex)
+  const setListStoreRef = useRemoteStore((state) => state.setListRef)
 
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
@@ -57,6 +58,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   const listRef = useRef<FixedSizeList<any> | null>(null)
   const setListRef = (ref: FixedSizeList<any> | null) => {
     listRef.current = ref
+    setListStoreRef(ref)
   }
 
   useEffect(() => {
@@ -201,10 +203,10 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       if (isScrollingDown) {
         currPageIndexRef.current = visibleStopIndex
         setReadingPageIndex(currPageIndexRef.current)
-        console.log(
-          `%cDuring scroll down, reading page index set to: ${currPageIndexRef.current}`,
-          "color: blue; font-weight: bold;",
-        )
+        // console.log(
+        //   `%cDuring scroll down, reading page index set to: ${currPageIndexRef.current}`,
+        //   "color: blue; font-weight: bold;",
+        // )
         if (fingerprint)
           localStorage.setItem(
             `pageIndex-${fingerprint}`,
@@ -215,10 +217,10 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       if (isScrollingUp) {
         currPageIndexRef.current = visibleStopIndex
         setReadingPageIndex(currPageIndexRef.current)
-        console.log(
-          `%cDuring scroll up, reading page index set to: ${currPageIndexRef.current}`,
-          "color: blue; font-weight: bold;",
-        )
+        // console.log(
+        //   `%cDuring scroll up, reading page index set to: ${currPageIndexRef.current}`,
+        //   "color: blue; font-weight: bold;",
+        // )
         if (fingerprint)
           localStorage.setItem(
             `pageIndex-${fingerprint}`,
