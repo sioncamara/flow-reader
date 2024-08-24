@@ -1,7 +1,7 @@
-import { FixedSizeList } from 'react-window';
-import { create } from 'zustand'
+import { FixedSizeList } from "react-window"
+import { create } from "zustand"
 
-type  CharIndexToNodeMap = {
+export type CharIndexToNodeMap = {
   [key: number]: { node: Element; localIndex: number }
 }
 
@@ -18,6 +18,7 @@ type remoteState = {
   voiceURI: string
   combinedText: string
   charIndexToNodeMap: CharIndexToNodeMap | null
+  wordSelectedOnOtherPage: boolean
   setReadingPageIndex: (readingPageIndex: number) => void
   setCurrTextPageIndex: (currTextPageIndex: number) => void
   setIsPaused: (isPaused: boolean) => void
@@ -31,9 +32,11 @@ type remoteState = {
   setCharIndexToNodeMap: (charIndexToNodeMap: CharIndexToNodeMap) => void
   listRef: FixedSizeList<any> | null
   setListRef: (ref: FixedSizeList<any> | null) => void
+  setWordSelectedOnOtherPage: (wordSelectedOnOtherPage: boolean) => void
+  resetStore: () => void
 }
 
-export const useRemoteStore = create<remoteState>((set) => ({
+const initialState = {
   readingPageIndex: 0,
   currTextPageIndex: 0,
   isPaused: false,
@@ -41,11 +44,18 @@ export const useRemoteStore = create<remoteState>((set) => ({
   reachedUtteranceEnd: false,
   utterance: null,
   rate: 2.4,
-  lang: 'en-US',
-  voiceURI: 'Microsoft Guy Online (Natural) - English (United States)',
-  combinedText: '',
+  lang: "en-US",
+  voiceURI: "Microsoft Guy Online (Natural) - English (United States)",
+  combinedText: "",
   charIndexToNodeMap: null,
   listRef: null,
+  wordSelectedOnOtherPage: false,
+}
+
+export const useRemoteStore = create<remoteState>((set) => ({
+  ...initialState,
+  setWordSelectedOnOtherPage: (wordSelectedOnOtherPage) =>
+    set({ wordSelectedOnOtherPage }),
   setReadingPageIndex: (readingPageIndex) => set({ readingPageIndex }),
   setCurrTextPageIndex: (currTextPageIndex) => set({ currTextPageIndex }),
   setIsPaused: (isPaused) => set({ isPaused }),
@@ -58,4 +68,5 @@ export const useRemoteStore = create<remoteState>((set) => ({
   setCombinedText: (combinedText) => set({ combinedText }),
   setCharIndexToNodeMap: (charIndexToNodeMap) => set({ charIndexToNodeMap }),
   setListRef: (listRef) => set({ listRef }),
+  resetStore: () => set(initialState),
 }))

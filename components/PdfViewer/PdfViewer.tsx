@@ -42,9 +42,14 @@ type PdfViewerProps = {
 }
 
 const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
-  const setReadingPageIndex = useRemoteStore((state) => state.setReadingPageIndex)
-  const setCurrTextPageIndex = useRemoteStore((state) => state.setCurrTextPageIndex)
+  const setReadingPageIndex = useRemoteStore(
+    (state) => state.setReadingPageIndex,
+  )
+  const setCurrTextPageIndex = useRemoteStore(
+    (state) => state.setCurrTextPageIndex,
+  )
   const setListStoreRef = useRemoteStore((state) => state.setListRef)
+  const resetRemoteStore = useRemoteStore((state) => state.resetStore)
 
   const [file, setFile] = useState<PDFFile | Blob>("")
   const [numPages, setNumPages] = useState<number>()
@@ -80,6 +85,13 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
           stop: currPageIndexRef.current,
         }
       }
+    }
+
+    return () => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel()
+      }
+      resetRemoteStore()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fingerprint])
@@ -140,23 +152,23 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     }
   }
 
-  const handleTocSelect = useCallback(({pageIndex}: {pageIndex: number}) => {
-    listRef.current?.scrollToItem(pageIndex, "start")
-    currPageIndexRef.current = pageIndex
-    visibleItemsRef.current = {
-      start: pageIndex,
-      stop: pageIndex,
-    }
-    setReadingPageIndex(pageIndex)
-    setCurrTextPageIndex(pageIndex)
-    if (fingerprint) {
-      localStorage.setItem(
-        `pageIndex-${fingerprint}`,
-        pageIndex.toString()
-      )
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const handleTocSelect = useCallback(
+    ({ pageIndex }: { pageIndex: number }) => {
+      listRef.current?.scrollToItem(pageIndex, "start")
+      currPageIndexRef.current = pageIndex
+      visibleItemsRef.current = {
+        start: pageIndex,
+        stop: pageIndex,
+      }
+      setReadingPageIndex(pageIndex)
+      setCurrTextPageIndex(pageIndex)
+      if (fingerprint) {
+        localStorage.setItem(`pageIndex-${fingerprint}`, pageIndex.toString())
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [],
+  )
 
   const handleItemsRendered = ({
     visibleStartIndex,
@@ -176,7 +188,6 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       prevVisibleStartValue !== visibleStartIndex ||
       prevVisibleStopValue !== visibleStopIndex
     ) {
-  
       // console.log(
       //   `%cPrevious visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
       //   "color: turquoise; font-weight: bold;",
@@ -187,10 +198,10 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       if (
         Math.abs(prevVisibleStartValue - visibleStartIndex) > 3 ||
         Math.abs(prevVisibleStopValue - visibleStopIndex) > 3
-      ){
+      ) {
         console.log("Programatically scrolled to a far away page")
         return
-}
+      }
       // could add logic specifically for mobile/smaller viewport down the line
       const isScrollingDown =
         prevVisibleStartValue < visibleStartIndex ||

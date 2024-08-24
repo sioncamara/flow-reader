@@ -12,13 +12,20 @@ type PDFPageProps = {
 
 const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   const setRemoteCombinedText = useRemoteStore((state) => state.setCombinedText)
-const isPlaying = useRemoteStore((state) => state.isPlaying)
-const setCurrTextPageIndex = useRemoteStore((state) => state.setCurrTextPageIndex)
-const currTextPageIndex = useRemoteStore((state) => state.currTextPageIndex)
-const charIndexToNodeMap = useRemoteStore((state) => state.charIndexToNodeMap)
-const setCharIndexToNodeMap = useRemoteStore((state) => state.setCharIndexToNodeMap)
-const readingPageIndex = useRemoteStore((state) => state.readingPageIndex)
-const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
+  const isPlaying = useRemoteStore((state) => state.isPlaying)
+  const setCurrTextPageIndex = useRemoteStore(
+    (state) => state.setCurrTextPageIndex,
+  )
+  const setCharIndexToNodeMap = useRemoteStore(
+    (state) => state.setCharIndexToNodeMap,
+  )
+  const readingPageIndex = useRemoteStore((state) => state.readingPageIndex)
+  const reachedUtteranceEnd = useRemoteStore(
+    (state) => state.reachedUtteranceEnd,
+  )
+  const wordSelectedOnOtherPage = useRemoteStore(
+    (state) => state.wordSelectedOnOtherPage,
+  )
 
   const [combinedText, setCombinedText] = useState<string>("")
 
@@ -26,7 +33,6 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
     null,
   ) as React.MutableRefObject<HTMLDivElement | null>
   const textContentRef = useRef<string>("")
-
 
   useEffect(() => {
     if (!pageRef.current || index !== readingPageIndex) {
@@ -74,7 +80,7 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {    
+  useEffect(() => {
     if (!pageRef.current || index !== readingPageIndex) {
       return
     }
@@ -85,9 +91,16 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
     // )
 
     // console.log(`readingPageIndex: ${readingPageIndex}, currTextPageIndex: ${currTextPageIndex}`);
-    
 
-    if (reachedUtteranceEnd || index === readingPageIndex && (!isPlaying)) {
+    if (
+      wordSelectedOnOtherPage ||
+      reachedUtteranceEnd ||
+      (index === readingPageIndex && !isPlaying)
+    ) {
+      console.log(
+        "condition met wordSelectedOnOtherPage: ",
+        wordSelectedOnOtherPage,
+      )
       const nodes = Array.from(
         pageRef.current.querySelectorAll(
           '.textLayer span[role="presentation"]',
@@ -96,14 +109,19 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
       if (nodes.length > 0) {
         processIndexToNodeMap(nodes)
         setRemoteCombinedText(combinedText)
-        setCurrTextPageIndex(index)        
+        setCurrTextPageIndex(index)
       } else {
         console.log("No presentation spans found in the text layer")
       }
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readingPageIndex, isPlaying, reachedUtteranceEnd])
+  }, [
+    readingPageIndex,
+    isPlaying,
+    reachedUtteranceEnd,
+    wordSelectedOnOtherPage,
+  ])
 
   const processIndexToNodeMap = (nodes: Element[]) => {
     // Preprocess nodes to create a mapping of character indices to nodes
@@ -119,23 +137,14 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
       }
       accumulatedLength += nodeText.length + 1 // +1 for space between nodes
     })
-    if (index === readingPageIndex)
-      setCharIndexToNodeMap(charIndexToNodeMap)
+    if (index === readingPageIndex) setCharIndexToNodeMap(charIndexToNodeMap)
   }
 
-
-
-
-
-
   const getTextContent = (textContent: TextContent) => {
-    // console.log("textContent:", textContent)
     const fullText = textContent.items
       .filter((item): item is TextItem => "str" in item && item.str !== "")
       .map((item) => item.str)
       .join(" ")
-
-    // console.log("fullText:", fullText)
 
     textContentRef.current = fullText
     setCombinedText(fullText)
@@ -170,18 +179,9 @@ const reachedUtteranceEnd = useRemoteStore((state) => state.reachedUtteranceEnd)
           "An error occurred in the Page component: " + error
         }
       />
-      <div className="absolute left-0 top-0 z-50 flex flex-col gap-2 bg-white p-2">
-      
-
-        <button
-          onClick={() => {
-            console.log("index:", index)
-            console.log("readingPageIndex:", readingPageIndex)
-          }}
-        >
-          print index
-        </button>
-      </div>
+      {/* <div className="absolute left-0 top-0 z-50 flex flex-col gap-2 bg-white p-2">
+      <button onClick={() => console.log(`index: ${index}, readingPageIndex: ${readingPageIndex}`)}>Print index</button>
+      </div> */}
     </div>
   )
 }

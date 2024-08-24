@@ -1,11 +1,15 @@
-import { create } from 'zustand'
+import { create } from "zustand"
 
 interface PdfViewerState {
   readingPageIndex: number
-  charIndexToNodeMap: { [key: number]: { node: Element; localIndex: number } } | null
+  charIndexToNodeMap: {
+    [key: number]: { node: Element; localIndex: number }
+  } | null
   currentWordIndex: number
   setReadingPageIndex: (index: number) => void
-  setCharIndexToNodeMap: (map: { [key: number]: { node: Element; localIndex: number } } | null) => void
+  setCharIndexToNodeMap: (
+    map: { [key: number]: { node: Element; localIndex: number } } | null,
+  ) => void
   setCurrentWordIndex: (index: number) => void
 }
 
