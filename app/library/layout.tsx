@@ -1,5 +1,6 @@
 import { SearchIcon } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Input, Button} from "@/components/ui"
+
 import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
@@ -9,7 +10,6 @@ import {
   DropdownMenu,
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
 
 export default function LibraryLayout({
   children,

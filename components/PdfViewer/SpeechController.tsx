@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRemoteStore } from "@/store/useRemoteStore"
 import { useVoices } from "react-text-to-speech"
 import type { CharIndexToNodeMap } from "@/store/useRemoteStore"
+import { toast } from "../ui/use-toast"
 
 type FixedSizeListState = {
   instance: any,
@@ -104,6 +105,13 @@ const SpeechController: React.FC = () => {
     startOffset: number,
   ) => {
     let globalCharIndex = 0
+    if (charIndexToNodeMap === null) {
+      toast({
+        title: "Hi there 👋",
+        description: "The text is now loaded, please try again.",
+      })
+      return
+    }
     for (const [index, node] of Object.entries(
       charIndexToNodeMap as CharIndexToNodeMap,
     )) {
