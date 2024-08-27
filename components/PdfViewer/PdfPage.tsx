@@ -2,7 +2,11 @@ import React, { useEffect, useState, useRef } from "react"
 import { Page } from "react-pdf"
 import { CSSProperties } from "react"
 import { useRemoteStore } from "@/store/useRemoteStore"
-import { TextContent, TextItem } from "pdfjs-dist/types/src/display/api"
+import {
+  combineNestedSpans,
+  combineSpans,
+  handleHyphenatedWords,
+} from "@/lib/utils"
 
 type PDFPageProps = {
   index: number
@@ -11,14 +15,8 @@ type PDFPageProps = {
 }
 
 const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
-  const setRemoteCombinedText = useRemoteStore((state) => state.setCombinedText)
-  const isPlaying = useRemoteStore((state) => state.isPlaying)
-  const setCurrTextPageIndex = useRemoteStore(
-    (state) => state.setCurrTextPageIndex,
-  )
-  const setCharIndexToNodeMap = useRemoteStore(
-    (state) => state.setCharIndexToNodeMap,
-  )
+
+ const isPlaying = useRemoteStore((state) => state.isPlaying)
   const readingPageIndex = useRemoteStore((state) => state.readingPageIndex)
   const reachedUtteranceEnd = useRemoteStore(
     (state) => state.reachedUtteranceEnd,
@@ -27,15 +25,25 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     (state) => state.wordSelectedOnOtherPage,
   )
 
-  const [combinedText, setCombinedText] = useState<string>("")
+  const setRemoteCombinedText = useRemoteStore((state) => state.setCombinedText)
+  const setCurrTextPageIndex = useRemoteStore(
+    (state) => state.setCurrTextPageIndex,
+  )
+  const setCharIndexToNodeMap = useRemoteStore(
+    (state) => state.setCharIndexToNodeMap,
+  )
+
+  const [postRender, setPostRender] = useState(false)
+  
+
+ 
 
   const pageRef = useRef<HTMLDivElement | null>(
     null,
   ) as React.MutableRefObject<HTMLDivElement | null>
-  const textContentRef = useRef<string>("")
 
   useEffect(() => {
-    if (!pageRef.current || index !== readingPageIndex) {
+    if (!pageRef.current || index !== readingPageIndex || !postRender) {
       // console.log(`Page: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`);
       return
     }
@@ -59,8 +67,18 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
       )
 
       if (nodes.length > 0) {
+        handleHyphenatedWords()
         console.log("Text layer and presentation spans found")
+        const fullText = nodes
+          .map((node) => node.textContent || "")
+          .join(" ")
+          .trim()
+          
+        setRemoteCombinedText(fullText)
         processIndexToNodeMap(nodes)
+
+
+
       } else if (attempts < maxAttempts) {
         attempts++
         timeoutId = setTimeout(checkForTextLayer, checkInterval)
@@ -78,19 +96,13 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
       clearTimeout(timeoutId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [postRender])
+
 
   useEffect(() => {
     if (!pageRef.current || index !== readingPageIndex) {
       return
     }
-
-    // console.log(
-    //   `%cPage: ${index}, Reading: ${readingPageIndex}, Match: ${index === readingPageIndex}`,
-    //   "color: green; font-weight: bold;",
-    // )
-
-    // console.log(`readingPageIndex: ${readingPageIndex}, currTextPageIndex: ${currTextPageIndex}`);
 
     if (
       wordSelectedOnOtherPage ||
@@ -106,9 +118,15 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
           '.textLayer span[role="presentation"]',
         ) || [],
       )
+
       if (nodes.length > 0) {
+        const fullText = nodes
+          .map((node) => node.textContent || "")
+          .join(" ")
+          .trim()
+        console.log('fullText: ', fullText);
+        setRemoteCombinedText(fullText)
         processIndexToNodeMap(nodes)
-        setRemoteCombinedText(combinedText)
         setCurrTextPageIndex(index)
       } else {
         console.log("No presentation spans found in the text layer")
@@ -137,31 +155,7 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
       }
       accumulatedLength += nodeText.length + 1 // +1 for space between nodes
     })
-    if (index === readingPageIndex) setCharIndexToNodeMap(charIndexToNodeMap)
-  }
-
-  const getTextContent = (textContent: TextContent) => {
-    const fullText = textContent.items
-      .filter((item): item is TextItem => "str" in item && item.str !== "")
-      .map((item) => item.str)
-      .join(" ")
-
-    textContentRef.current = fullText
-    setCombinedText(fullText)
-    if (index === readingPageIndex) {
-      setRemoteCombinedText(fullText)
-    }
-
-    // const sentenceRegex = /[^.!?]+(?:[.!?]+|$)/g
-    // const sentences = fullText.match(sentenceRegex) || []
-    // const trimmedSentences = sentences.map((sentence) => sentence.trim())
-    // const nonEmptySentences = trimmedSentences.filter(
-    //   (sentence) => sentence.length > 0,
-    // )
-
-    // console.log("nonEmptySentences:", nonEmptySentences)
-
-    // setSentences(nonEmptySentences)
+    setCharIndexToNodeMap(charIndexToNodeMap)
   }
 
   return (
@@ -173,7 +167,15 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
       <Page
         pageNumber={index + 1}
         width={width - 16}
-        onGetTextSuccess={getTextContent}
+        onRenderSuccess={() => {
+          // hideRepeateText()
+          combineNestedSpans()
+          handleHyphenatedWords()
+          setTimeout(() => {
+            setPostRender(true)
+          }, 1000)
+          // combineSpans()
+        }}
         onError={() => "An error occurred in the Page component"}
         onGetStructTreeError={(error) =>
           "An error occurred in the Page component: " + error
