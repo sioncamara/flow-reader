@@ -7,6 +7,8 @@ import {
   combineSpans,
   handleHyphenatedWords,
 } from "@/lib/utils"
+import { useToast } from "@/components/ui/use-toast"
+
 
 type PDFPageProps = {
   index: number
@@ -34,7 +36,7 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   )
 
   const [postRender, setPostRender] = useState(false)
-  
+  const { toast } = useToast()
 
  
 
@@ -83,6 +85,12 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
         attempts++
         timeoutId = setTimeout(checkForTextLayer, checkInterval)
       } else {
+        toast({
+          variant: "destructive",
+          duration: 5000,
+          title: "Uh oh!",
+          description: "Unfortunately, this Document is not supported by Flow Reader. Please try a different Document.",
+        })
         console.log(
           "Max attempts reached, text layer or presentation spans not found",
         )
@@ -124,7 +132,6 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
           .map((node) => node.textContent || "")
           .join(" ")
           .trim()
-        console.log('fullText: ', fullText);
         setRemoteCombinedText(fullText)
         processIndexToNodeMap(nodes)
         setCurrTextPageIndex(index)

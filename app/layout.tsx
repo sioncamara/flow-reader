@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import { GlobalNav } from "@/components/global-nav"
 import "@/styles/globals.css"
 import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui"
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -32,6 +33,7 @@ export default function RootLayout({
         )}
       >
         <GlobalNav>{children}</GlobalNav>
+        <Toaster />
       </body>
     </html>
   )
