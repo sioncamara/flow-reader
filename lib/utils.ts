@@ -185,8 +185,6 @@ export function handleHyphenatedWords() {
       const hyphenSpan = markedContentSpan.querySelector(
         'span[role="presentation"]',
       )
-      if (hyphenSpan?.innerHTML.includes("references from them"))
-        console.log(hyphenSpan)
 
       if (!hyphenSpan || hyphenSpan.innerHTML !== "-") return
 
@@ -197,8 +195,6 @@ export function handleHyphenatedWords() {
       if (!nextSpan) return
 
       const nextSpanText = nextSpan.innerHTML
-      if (nextSpanText.includes("references from them"))
-        console.log(nextSpanText)
 
       const firstSpaceIndex = nextSpanText.indexOf(" ")
 
@@ -211,11 +207,27 @@ export function handleHyphenatedWords() {
 
         if (firstSpaceIndex !== -1) {
           // Move the second half of the hyphenated word to the previous span
-          prevSpan.innerHTML +=
-            hyphenSpan.innerHTML.slice(0, -1) +
-            nextSpanText.slice(0, firstSpaceIndex)
+          const movedText = nextSpanText.slice(0, firstSpaceIndex)
+          prevSpan.innerHTML += hyphenSpan.innerHTML.slice(0, -1) + movedText
           // Update the next span to remove the moved part
           nextSpan.innerHTML = nextSpanText.slice(firstSpaceIndex)
+
+          // Adjust the left position of the next span
+          const leftCalcPattern = /left:\s*calc\(var\(--scale-factor\)\s*\*\s*(\d+(?:\.\d+)?)/
+           const leftValuePattern = /left:\s*(.*?);/
+          const currentStyle = nextSpan.getAttribute("style") || ""
+          const leftMatch = currentStyle.match(leftCalcPattern)?.[1]
+          console.log('leftMatch: ', leftMatch);
+          if (leftMatch) {
+            const charsRemoved = movedText.length - (movedText.endsWith('.') ? 1 : 0)
+            console.log(`left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`, `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`);
+            
+            const newStyle = currentStyle.replace(
+              leftValuePattern,
+              `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch);`,
+            )
+            nextSpan.setAttribute("style", newStyle)
+          }
         } else {
           // If there's no space, move the entire next span content
           prevSpan.innerHTML += hyphenSpan.innerHTML.slice(0, -1) + nextSpanText
@@ -241,7 +253,7 @@ export function combineSpans() {
       let parentSpan: HTMLSpanElement | null = null
 
       spans.forEach((span) => {
-        const nextSibling = span.nextElementSibling
+        const nextSibling = span.nextElementSibling // assumes that there should be a br between spans
 
         if (
           nextSibling &&
