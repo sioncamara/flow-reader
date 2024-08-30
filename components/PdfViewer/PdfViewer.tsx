@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { pdfjs, Document, Outline } from "react-pdf"
 import { FixedSizeList } from "react-window"
 import AutoSizer from "react-virtualized-auto-sizer"
@@ -29,10 +29,7 @@ export type PdfStore = DBSchema & {
   }
 }
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.js",
-  import.meta.url,
-).toString()
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 type PDFFile = string | File | null
 
@@ -96,14 +93,6 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fingerprint])
 
-  const options = useMemo(
-    () => ({
-      cMapUrl: "/cmaps/",
-      standardFontDataUrl: "/standard_fonts/",
-    }),
-    [],
-  )
-
   const onResize = useCallback<ResizeObserverCallback>(() => {
     listRef?.current?.scrollToItem(currPageIndexRef.current, "start")
     visibleItemsRef.current = {
@@ -165,8 +154,8 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       if (fingerprint) {
         localStorage.setItem(`pageIndex-${fingerprint}`, pageIndex.toString())
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   )
 
@@ -260,7 +249,6 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
                   file={file}
                   onItemClick={handleTocSelect}
                   onLoadSuccess={loadAndStorePdf}
-                  options={options}
                   onError={() => "An error occurred in the Document component"}
                 >
                   {numPages && (

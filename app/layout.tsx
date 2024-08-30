@@ -4,6 +4,7 @@ import { GlobalNav } from "@/components/global-nav"
 import "@/styles/globals.css"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui"
+import "@/polyfills"
 
 const fontSans = Inter({
   subsets: ["latin"],

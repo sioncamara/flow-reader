@@ -1,7 +1,3 @@
-import { createRequire } from "module"
-const require = createRequire(import.meta.url)
-const nodeLoader = require("node-loader")
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -21,14 +17,12 @@ const nextConfig = {
     ],
     dangerouslyAllowSVG: true,
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.module.rules.push({
-        test: /\.node$/,
-        use: "node-loader",
-      })
-    }
-    return config
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        canvas: "./empty-module.ts",
+      },
+    },
   },
 }
 
