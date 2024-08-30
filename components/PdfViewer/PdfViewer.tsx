@@ -212,7 +212,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
         prevVisibleStopValue > visibleStopIndex
 
       if (isScrollingDown) {
-        currPageIndexRef.current = visibleStopIndex
+        currPageIndexRef.current = visibleStartIndex
         setReadingPageIndex(currPageIndexRef.current)
         // console.log(
         //   `%cDuring scroll down, reading page index set to: ${currPageIndexRef.current}`,

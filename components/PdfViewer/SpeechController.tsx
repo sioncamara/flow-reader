@@ -5,10 +5,10 @@ import type { CharIndexToNodeMap } from "@/store/useRemoteStore"
 import { toast } from "../ui/use-toast"
 
 type FixedSizeListState = {
-  instance: any,
-  isScrolling: boolean,
-  scrollDirection: "forward" | "backward",
-  scrollOffset: number,
+  instance: any
+  isScrolling: boolean
+  scrollDirection: "forward" | "backward"
+  scrollOffset: number
   scrollUpdateWasRequested: boolean
 }
 
@@ -52,7 +52,7 @@ const SpeechController: React.FC = () => {
     nextWordIndexRef.current = 0
     if (currTextPageIndex === readingPageIndex && isPlaying) {
       handlePlay()
-      smoothScrollToItem(currTextPageIndex) 
+      smoothScrollToItem(currTextPageIndex)
       setReachedUtteranceEnd(false) // not sure if there is a point to this. Think there is it was just also being done within handlePlay. Makes more sense here.
     }
 
@@ -97,8 +97,6 @@ const SpeechController: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charIndexToNodeMap, voiceURI, rate, readingPageIndex])
-
-
 
   const startSpeechFromDoubleClick = (
     parentElement: HTMLElement,
@@ -210,31 +208,18 @@ const SpeechController: React.FC = () => {
           event.charIndex,
           event.charIndex + event.charLength,
         )
-        // console.log("(inside utterance.onboundary) currentWord:", currentWord)
-        // console.log('(inside utterance.onboundary) startIndex:', startIndex);
-        // console.log('(inside utterance.onboundary) charIndex:', event.charIndex);
-        
-        // console.log('combinedText:', combinedText);
-        
+
+        console.log("(inside utterance.onboundary) currentWord:", currentWord)
+        console.log(
+          "(inside utterance.onboundary) currentCharIndexRef.current:",
+          currentCharIndexRef.current,
+        )
+        console.log(
+          "inside utterance.onboundary) charIndexToNodeMap:",
+          charIndexToNodeMap,
+        )
 
         highlightCurrentWord(currentWord, startIndex + event.charIndex)
-        const isLastWord =
-          event.charIndex + event.charLength >= utterance.text.length - 1
-
-          // todo: consider using onEnd utterance event to handle this
-        if (isLastWord) {
-          // since this function is passed to a hook, the value of state variables at the time of fn pass will
-          // be the same as the value at the time of fn execution even if store value updates through other means
-          // this means readingPageIndex will be the same as currTextPageIndex at the time of fn execution
-
-          // if a user has not scrolled to the next page, then readingPageIndex needs to be updated
-          // if user has already scrolled, then incrementing it by one has no effect since the value is being set to it's
-          // current store value, which was set when the user scrolled to the next page, so no side effect will occure
-          setTimeout(() => {
-            setReadingPageIndex(readingPageIndex + 1) // only triggers side effect if user did not bring next page into view
-            setReachedUtteranceEnd(true)
-          }, 500) // 500ms delay to allow the utterance to finish before starting the next one (bit of a hack, but get's the job done for now)
-        }
       }
     }
 
@@ -246,6 +231,8 @@ const SpeechController: React.FC = () => {
     utterance.onend = (event) => {
       console.log("Speech Stopped:", event)
       console.log("this is the end")
+      setReadingPageIndex(readingPageIndex + 1) // only triggers side effect if user did not bring next page into view
+      setReachedUtteranceEnd(true)
 
       setIsPaused(false)
     }
@@ -253,7 +240,7 @@ const SpeechController: React.FC = () => {
     return utterance
   }
 
-    // bug: if user scrolls far enough from current page, and comes back highlighting will stop despite everying looking right
+  // bug: if user scrolls far enough from current page, and comes back highlighting will stop despite everying looking right
   // my guess is that the auto list re-renders...nah that doesn't make much sense since the use effect should re-trigger.
   // I'd say not worth the time unless users are complaining about it.
   const highlightCurrentWord = useCallback(
@@ -262,7 +249,7 @@ const SpeechController: React.FC = () => {
       //   console.log('word:', word);
       // console.log('charIndexToNodeMap:', charIndexToNodeMap);
 
-      // there is a big with highlighting "Create a site map (for websites) or list of screens (for desktop apps)."
+      // there is a bug with highlighting "Create a site map (for websites) or list of screens (for desktop apps)."
       // this is from start small and stay small chapter 3 3rd page (Building it heading)
 
       if (charIndexToNodeMap) {
@@ -297,35 +284,41 @@ const SpeechController: React.FC = () => {
   )
 
   function easeInOutCubic(t: number): number {
-    return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
   }
 
-  const smoothScrollToItem = useCallback((index: number) => {
-    if (listRef) {
-      const startTime = performance.now();
-      const duration = 500; // Adjust as needed
+  const smoothScrollToItem = useCallback(
+    (index: number) => {
+      if (listRef) {
+        const startTime = performance.now()
+        const duration = 500 // Adjust as needed
 
-      const startScrollOffset = (listRef.state as FixedSizeListState).scrollOffset;
-      const itemSize = listRef.props.itemSize as number;
-      const targetScrollOffset = index * itemSize;
+        const startScrollOffset = (listRef.state as FixedSizeListState)
+          .scrollOffset
+        const itemSize = listRef.props.itemSize as number
+        const targetScrollOffset = index * itemSize
 
-      const animateScroll = (currentTime: number) => {
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        const easeProgress = easeInOutCubic(progress);
+        const animateScroll = (currentTime: number) => {
+          const elapsedTime = currentTime - startTime
+          const progress = Math.min(elapsedTime / duration, 1)
+          const easeProgress = easeInOutCubic(progress)
 
-        const newScrollOffset = startScrollOffset + (targetScrollOffset - startScrollOffset) * easeProgress;
-        
-        listRef.scrollTo(newScrollOffset);
+          const newScrollOffset =
+            startScrollOffset +
+            (targetScrollOffset - startScrollOffset) * easeProgress
 
-        if (progress < 1) {
-          requestAnimationFrame(animateScroll);
+          listRef.scrollTo(newScrollOffset)
+
+          if (progress < 1) {
+            requestAnimationFrame(animateScroll)
+          }
         }
-      };
 
-      requestAnimationFrame(animateScroll);
-    }
-  }, [listRef]);
+        requestAnimationFrame(animateScroll)
+      }
+    },
+    [listRef],
+  )
 
   return (
     <div className="fixed bottom-4 left-1/2 z-50 flex flex-auto -translate-x-1/2 transform gap-3 rounded-lg bg-white p-2 shadow-md">
