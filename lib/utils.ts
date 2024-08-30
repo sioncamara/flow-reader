@@ -213,15 +213,20 @@ export function handleHyphenatedWords() {
           nextSpan.innerHTML = nextSpanText.slice(firstSpaceIndex)
 
           // Adjust the left position of the next span
-          const leftCalcPattern = /left:\s*calc\(var\(--scale-factor\)\s*\*\s*(\d+(?:\.\d+)?)/
-           const leftValuePattern = /left:\s*(.*?);/
+          const leftCalcPattern =
+            /left:\s*calc\(var\(--scale-factor\)\s*\*\s*(\d+(?:\.\d+)?)/
+          const leftValuePattern = /left:\s*(.*?);/
           const currentStyle = nextSpan.getAttribute("style") || ""
           const leftMatch = currentStyle.match(leftCalcPattern)?.[1]
-          console.log('leftMatch: ', leftMatch);
+          console.log("leftMatch: ", leftMatch)
           if (leftMatch) {
-            const charsRemoved = movedText.length - (movedText.endsWith('.') ? 1 : 0)
-            console.log(`left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`, `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`);
-            
+            const charsRemoved =
+              movedText.length - (movedText.endsWith(".") ? 1 : 0)
+            console.log(
+              `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`,
+              `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`,
+            )
+
             const newStyle = currentStyle.replace(
               leftValuePattern,
               `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch);`,

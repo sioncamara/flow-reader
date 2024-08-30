@@ -1,5 +1,5 @@
 import { SearchIcon } from "lucide-react"
-import { Input, Button} from "@/components/ui"
+import { Input, Button } from "@/components/ui"
 
 import {
   DropdownMenuTrigger,

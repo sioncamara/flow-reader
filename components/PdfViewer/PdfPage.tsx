@@ -9,7 +9,6 @@ import {
 } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
 
-
 type PDFPageProps = {
   index: number
   width: number
@@ -17,8 +16,7 @@ type PDFPageProps = {
 }
 
 const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
-
- const isPlaying = useRemoteStore((state) => state.isPlaying)
+  const isPlaying = useRemoteStore((state) => state.isPlaying)
   const readingPageIndex = useRemoteStore((state) => state.readingPageIndex)
   const reachedUtteranceEnd = useRemoteStore(
     (state) => state.reachedUtteranceEnd,
@@ -37,8 +35,6 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
 
   const [postRender, setPostRender] = useState(false)
   const { toast } = useToast()
-
- 
 
   const pageRef = useRef<HTMLDivElement | null>(
     null,
@@ -75,12 +71,9 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
           .map((node) => node.textContent || "")
           .join(" ")
           .trim()
-          
+
         setRemoteCombinedText(fullText)
         processIndexToNodeMap(nodes)
-
-
-
       } else if (attempts < maxAttempts) {
         attempts++
         timeoutId = setTimeout(checkForTextLayer, checkInterval)
@@ -89,7 +82,8 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
           variant: "destructive",
           duration: 5000,
           title: "Uh oh!",
-          description: "Unfortunately, this Document is not supported by Flow Reader. Please try a different Document.",
+          description:
+            "Unfortunately, this Document is not supported by Flow Reader. Please try a different Document.",
         })
         console.log(
           "Max attempts reached, text layer or presentation spans not found",
@@ -105,7 +99,6 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postRender])
-
 
   useEffect(() => {
     if (!pageRef.current || index !== readingPageIndex) {
