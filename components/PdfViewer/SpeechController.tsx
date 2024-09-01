@@ -86,6 +86,8 @@ const SpeechController: React.FC = () => {
           } else {
             startSpeechFromDoubleClick(parentElement, startOffset)
           }
+        } else {
+          handleStop()
         }
       }
     }
@@ -99,9 +101,10 @@ const SpeechController: React.FC = () => {
   }, [charIndexToNodeMap, voiceURI, rate, readingPageIndex])
 
   const startSpeechFromDoubleClick = (
-    parentElement: HTMLElement,
+    providedParentElement: HTMLElement,
     startOffset: number,
   ) => {
+    console.log("startSpeechFromDoubleClick")
     let globalCharIndex = 0
     if (charIndexToNodeMap === null) {
       toast({
@@ -110,10 +113,46 @@ const SpeechController: React.FC = () => {
       })
       return
     }
+
+    const resetHighlightedWord = () => {
+      // only use after appropriate check
+      lastHighlightedWord.current!.outerHTML =
+        lastHighlightedWord.current!.innerHTML
+      lastHighlightedWord.current = null
+    }
+
+    let parentElement = providedParentElement
+    if (lastHighlightedWord.current) {
+      try {
+        if (
+          lastHighlightedWord.current.parentElement &&
+          parentElement?.textContent?.includes(
+            lastHighlightedWord.current.innerHTML,
+          )
+        ) {
+          // resetHighlightedWord()
+          // handlePlay()
+          // return
+          parentElement = lastHighlightedWord.current.parentElement
+          console.log("parent element set")
+        }
+        resetHighlightedWord()
+      } catch (error) {
+        console.log("Error within resetHighlightedWord")
+      }
+    }
+
     for (const [index, node] of Object.entries(
       charIndexToNodeMap as CharIndexToNodeMap,
     )) {
       if (node.node === parentElement) {
+        // for bug for selecting word at current or after current within current node
+        // console.log('there was a node match');
+
+        // console.log('index:', index);
+        // console.log('startOffset:', startOffset);
+        // console.log('combinedIndex:', parseInt(index) + startOffset);
+
         globalCharIndex = parseInt(index) + startOffset
         break
       }
@@ -132,7 +171,7 @@ const SpeechController: React.FC = () => {
       setIsPaused(false)
     } else {
       window.speechSynthesis.cancel()
-      // start()
+
       const newUtterance = createUtterance(
         combinedText,
         nextWordIndexRef.current,
@@ -209,15 +248,15 @@ const SpeechController: React.FC = () => {
           event.charIndex + event.charLength,
         )
 
-        console.log("(inside utterance.onboundary) currentWord:", currentWord)
-        console.log(
-          "(inside utterance.onboundary) currentCharIndexRef.current:",
-          currentCharIndexRef.current,
-        )
-        console.log(
-          "inside utterance.onboundary) charIndexToNodeMap:",
-          charIndexToNodeMap,
-        )
+        // console.log("(inside utterance.onboundary) currentWord:", currentWord)
+        // console.log(
+        //   "(inside utterance.onboundary) currentCharIndexRef.current:",
+        //   currentCharIndexRef.current,
+        // )
+        // console.log(
+        //   "inside utterance.onboundary) charIndexToNodeMap:",
+        //   charIndexToNodeMap,
+        // )
 
         highlightCurrentWord(currentWord, startIndex + event.charIndex)
       }
