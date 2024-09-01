@@ -28,6 +28,9 @@ importers:
       "@wojtekmaj/react-hooks":
         specifier: ^1.20.0
         version: 1.20.0(@types/react@18.2.79)(react@18.2.0)
+      an-array-of-english-words:
+        specifier: ^2.0.0
+        version: 2.0.0
       book-cover-3d:
         specifier: ^1.1.2
         version: 1.1.2(react@18.2.0)
@@ -1338,6 +1341,13 @@ packages:
       {
         integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==,
       }
+
+  an-array-of-english-words@2.0.0:
+    resolution:
+      {
+        integrity: sha512-FXnNvZSOI27kkKXeLSquhaTGP7z198UOQ4txaYO9fCfrjCh+D5SV7G7XqzEH0229+pAi4cjBEZ4WIQYgjKtO7Q==,
+      }
+    hasBin: true
 
   ansi-regex@5.0.1:
     resolution:
@@ -5290,6 +5300,8 @@ snapshots:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
+
+  an-array-of-english-words@2.0.0: {}
 
   ansi-regex@5.0.1: {}
 

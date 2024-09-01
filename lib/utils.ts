@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { PDFPageProxy } from "pdfjs-dist"
+import arrayWords from "an-array-of-english-words"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -29,7 +30,8 @@ function setAriaHiddenAttribute(
     const count = textCountMap[key]
 
     if (count > 1 || isNumberOnly(text)) {
-      span.setAttribute("aria-hidden", "true")
+      // span.setAttribute("aria-hidden", "true")
+      span.remove()
     }
   }
 }
@@ -227,9 +229,13 @@ export function handleHyphenatedWords() {
               `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch)`,
             )
 
+            const pixelsToMove = charsRemoved * 5.2 // 5.2 is an estimate of px per char. Could cause problems in certain books.
+
+            const newLeftValue = parseFloat(leftMatch) + pixelsToMove
+
             const newStyle = currentStyle.replace(
               leftValuePattern,
-              `left: calc(var(--scale-factor) * ${leftMatch}px + ${charsRemoved}ch);`,
+              `left: calc(var(--scale-factor) * ${newLeftValue.toFixed(2)}px);`,
             )
             nextSpan.setAttribute("style", newStyle)
           }
@@ -282,6 +288,351 @@ export function combineSpans() {
           }
         }
       })
+    }
+  })
+}
+
+export function combineSplitWordsOld(pageNumber: number) {
+  const englishWords = new Set(arrayWords)
+  englishWords.delete("et")
+  // const pages = document.querySelectorAll(".react-pdf__Page")
+  // console.log("englisgh word has  scient: ", englishWords.has(" scient"))
+  // console.log("englisgh word has et: ", englishWords.has("ist"))
+  // console.log("englisgh word has  scientist: ", englishWords.has("scientist")) // don't know why this is not working
+  // const test = " scien tist"
+  //  console.log(`${test.trim()}`);
+
+  const page = document.querySelector(
+    `.react-pdf__Page[data-page-number="${pageNumber}"]`,
+  )
+  if (!page) {
+    console.log(`Page ${pageNumber} not found`)
+    return
+  }
+  // console.log('page: ', page);
+  // console.log('pageNumber: ', pageNumber);
+
+  const textLayer = page.querySelector(
+    ".react-pdf__Page__textContent.textLayer",
+  )
+  if (textLayer) {
+    const spans = Array.from(
+      textLayer.querySelectorAll('span[role="presentation"]'),
+    )
+
+    if (spans.length === 0) {
+      console.log("no spans found on page: ", pageNumber)
+      return
+    }
+
+    if (
+      pageNumber === 9 ||
+      pageNumber === 10 ||
+      pageNumber === 11 ||
+      pageNumber === 12
+    ) {
+      console.log("inside the text layer of page: ", pageNumber)
+      console.log("textLayer: ", textLayer)
+    }
+
+    for (let i = 0; i < spans.length - 1; i++) {
+      const currentSpan = spans[i] as HTMLSpanElement
+      const nextSpan = spans[i + 1] as HTMLSpanElement
+
+      const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
+
+      const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
+      const combinedWord = currentWord + nextWord
+      if (currentWord === "y") {
+        // console.log("currentWord: ", currentWord)
+        // console.log("nextWord: ", nextWord)
+        // console.log("combinedWord: ", combinedWord)
+        // console.log("englishWords has combinedWord: ", englishWords.has(combinedWord))
+        // console.log("englishWords has currentWord: ", englishWords.has(currentWord))
+        // console.log("englishWords has nextWord: ", englishWords.has(nextWord))
+      }
+      if (
+        (!englishWords.has(currentWord) || currentWord.length === 1) &&
+        (!englishWords.has(nextWord) || !nextSpan.textContent?.includes(" ")) &&
+        englishWords.has(combinedWord)
+      ) {
+        // const combinedWord = currentWord + nextWord
+        // console.log("combinedWord: ", combinedWord)
+        // if (combinedWord === "yet") {
+        //   console.log("combinedWord with yet condition: ", combinedWord)
+        // }
+        // Combine the words
+        currentSpan.textContent! += nextSpan.textContent
+
+        nextSpan.remove()
+
+        // Skip the next iteration since we've already processed the next span
+        i++
+      }
+    }
+  }
+  // })
+}
+
+export const englishLetters = new Set<string>([
+  "a",
+  "b",
+  "c",
+  "d",
+  "e",
+  "f",
+  "g",
+  "h",
+  "i",
+  "j",
+  "k",
+  "l",
+  "m",
+  "n",
+  "o",
+  "p",
+  "q",
+  "r",
+  "s",
+  "t",
+  "u",
+  "v",
+  "w",
+  "x",
+  "y",
+  "z",
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "M",
+  "N",
+  "O",
+  "P",
+  "Q",
+  "R",
+  "S",
+  "T",
+  "U",
+  "V",
+  "W",
+  "X",
+  "Y",
+  "Z",
+])
+
+// export function combineSplitWords(pageNumber: number) {
+//   const englishWords = new Set(arrayWords)
+//   englishWords.delete("et")
+
+//   const page = document.querySelector(
+//     `.react-pdf__Page[data-page-number="${pageNumber}"]`,
+//   )
+//   if (!page) {
+//     console.log(`Page ${pageNumber} not found`)
+//     return
+//   }
+
+//   const textLayer = page.querySelector(
+//     ".react-pdf__Page__textContent.textLayer",
+//   )
+//   if (textLayer) {
+//     const spans = Array.from(
+//       textLayer.querySelectorAll('span[role="presentation"]'),
+//     )
+
+//     if (spans.length === 0) {
+//       if (pageNumber === 9) console.log("no spans found on page: ", pageNumber)
+//       return
+//     }
+
+//     if (
+//       pageNumber === 9 ||
+//       pageNumber === 10 ||
+//       pageNumber === 11 ||
+//       pageNumber === 12
+//     ) {
+//       console.log("inside the text layer of page: ", pageNumber)
+//       // console.log("textLayer: ", textLayer)
+//     }
+
+//     for (let i = 0; i < spans.length - 1; i++) {
+//       const currentSpan = spans[i] as HTMLSpanElement
+//       const nextSpan = spans[i + 1] as HTMLSpanElement
+
+//       const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
+
+//       const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
+//       const combinedWord = currentWord + nextWord
+
+//       if (
+//         (!englishWords.has(currentWord) || currentWord.length === 1) &&
+//         (!englishWords.has(nextWord) || !nextSpan.textContent?.includes(" ")) &&
+//         englishWords.has(combinedWord)
+//       ) {
+//         currentSpan.textContent! += nextSpan.textContent
+
+//         nextSpan.remove()
+
+//         // Skip the next iteration since we've already processed the next span
+//         i++
+//       }
+//     }
+//   }
+// }
+
+export function combineSplitWords(
+  pageNumber: number,
+  maxAttempts: number = 11,
+): void {
+  const englishWords = new Set(arrayWords)
+  englishWords.delete("et")
+
+  function attemptCombineWords(attempt: number): void {
+    if (attempt > maxAttempts) {
+      console.log(`Max attempts reached for page ${pageNumber}`)
+      return
+    }
+
+    const page = document.querySelector(
+      `.react-pdf__Page[data-page-number="${pageNumber}"]`,
+    )
+    if (!page) {
+      console.log(`Page ${pageNumber} not found`)
+      return
+    }
+
+    const textLayer = page.querySelector(
+      ".react-pdf__Page__textContent.textLayer",
+    )
+    // if (!textLayer) {
+    //   console.log(`Text layer not found on page ${pageNumber}`);
+    //   return;
+    // }
+
+    const spans = Array.from(
+      textLayer?.querySelectorAll('span[role="presentation"]') || [],
+    )
+
+    if (spans.length === 0) {
+      if (pageNumber === 9)
+        console.log(
+          `No spans found on page ${pageNumber}, attempt ${attempt}. Retrying...`,
+        )
+      setTimeout(() => attemptCombineWords(attempt + 1), 2000) // Wait 100ms before retrying
+      return
+    }
+
+    if (pageNumber === 9) {
+      console.log("spans found on attempt: ", attempt)
+      console.log("spans: ", spans)
+      // console.log('textLayer: ', textLayer);
+    }
+    for (let i = 0; i < spans.length - 1; i++) {
+      const currentSpan = spans[i] as HTMLSpanElement
+      const nextSpan = spans[i + 1] as HTMLSpanElement
+
+      const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
+      const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
+      const combinedWord = currentWord + nextWord
+
+      // if (combinedWord === "yet") console.log('the word is yet');
+
+      if (
+        ((currentWord !== "" && !englishWords.has(currentWord)) ||
+          currentWord.length === 1) &&
+        ((nextWord !== "" && !englishWords.has(nextWord)) ||
+          !nextSpan.textContent?.includes(" ")) &&
+        englishWords.has(combinedWord)
+      ) {
+        // if (pageNumber === 9 && combinedWord === "yet") {
+        //     console.log(`Combining words: "${currentWord}" + "${nextWord}" = "${combinedWord}"`)
+        //     console.log('length of currentWord: ', currentWord.length);
+
+        // }
+        currentSpan.textContent! += nextSpan.textContent
+        nextSpan.remove()
+        // if (pageNumber === 9 && combinedWord === "yet") {
+        //   console.log('currentSpan: ', currentSpan);
+        // }
+        i++
+      }
+    }
+  }
+
+  attemptCombineWords(1)
+}
+
+export function combineSplitWords2() {
+  const englishWords = new Set(arrayWords)
+  englishWords.delete("et")
+  const pages = document.querySelectorAll(".react-pdf__Page")
+  // console.log("englisgh word has  scient: ", englishWords.has(" scient"))
+  // console.log("englisgh word has et: ", englishWords.has("ist"))
+  // console.log("englisgh word has  scientist: ", englishWords.has("scientist")) // don't know why this is not working
+  // const test = " scien tist"
+  //  console.log(`${test.trim()}`);
+
+  pages.forEach((page) => {
+    // console.log('page: ', page);
+
+    const textLayer = page.querySelector(
+      ".react-pdf__Page__textContent.textLayer",
+    )
+
+    console.log("textLayer: ", textLayer)
+
+    if (textLayer) {
+      const spans = Array.from(
+        textLayer.querySelectorAll('span[role="presentation"]'),
+      )
+
+      // console.log('inside the text layer');
+
+      for (let i = 0; i < spans.length - 1; i++) {
+        const currentSpan = spans[i] as HTMLSpanElement
+        const nextSpan = spans[i + 1] as HTMLSpanElement
+
+        const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
+
+        const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
+        const combinedWord = currentWord + nextWord
+        if (currentWord === "y") {
+          // console.log("currentWord: ", currentWord)
+          // console.log("nextWord: ", nextWord)
+          // console.log("combinedWord: ", combinedWord)
+          // console.log("englishWords has combinedWord: ", englishWords.has(combinedWord))
+          // console.log("englishWords has currentWord: ", englishWords.has(currentWord))
+          // console.log("englishWords has nextWord: ", englishWords.has(nextWord))
+        }
+        if (
+          (!englishWords.has(currentWord) || currentWord.length === 1) &&
+          (!englishWords.has(nextWord) ||
+            !nextSpan.textContent?.includes(" ")) &&
+          englishWords.has(combinedWord)
+        ) {
+          // const combinedWord = currentWord + nextWord
+          // console.log("combinedWord: ", combinedWord)
+          // if (combinedWord === "yet") {
+          //   console.log("combinedWord with yet condition: ", combinedWord)
+          // }
+          // Combine the words
+          currentSpan.textContent! += nextSpan.textContent
+
+          nextSpan.remove()
+
+          // Skip the next iteration since we've already processed the next span
+          i++
+        }
+      }
     }
   })
 }
