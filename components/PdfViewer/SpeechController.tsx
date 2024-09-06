@@ -43,6 +43,7 @@ const SpeechController: React.FC = () => {
   const currentCharIndexRef = useRef<number>(0)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const nextWordIndexRef = useRef<number>(0)
+  const isScrollingRef = useRef(false)
 
   useEffect(() => {
     if (wordSelectedOnOtherPage) {
@@ -109,7 +110,7 @@ const SpeechController: React.FC = () => {
     if (charIndexToNodeMap === null) {
       toast({
         title: "Hi there 👋",
-        description: "The text is now loaded, please try again.",
+        description: "Was loading, please try again.",
       })
       return
     }
@@ -280,46 +281,46 @@ const SpeechController: React.FC = () => {
   }
 
   const scrollToHighlightedWord = useCallback((element: HTMLElement) => {
-    if (!element) return;
-  
-    const rect = element.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    
+    if (!element || isScrollingRef.current) return
+
+    const rect = element.getBoundingClientRect()
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight
+
     // Calculate the threshold for the bottom 15% of the viewport
-    const scrollThreshold = viewportHeight * 0.85;
-  
+    const scrollThreshold = viewportHeight * 0.85
+
     // Check if the element's bottom is within the bottom 15% of the viewport
-    const isNearBottom = rect.bottom > scrollThreshold;
+    const isNearBottom = rect.bottom > scrollThreshold
 
-    const isInViewport = 
-    rect.top >= 0 &&
-    rect.left >= 0 &&
-    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-    rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+    const isInViewport =
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <=
+        (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
 
-  
-    if (isNearBottom && isInViewport) {
+    const textIsBelowLargeImage = rect.bottom <= 1.75 * viewportHeight
+
+    if (isNearBottom && (isInViewport || textIsBelowLargeImage)) {
+      isScrollingRef.current = true
       const scrollOptions: ScrollIntoViewOptions = {
-        behavior: 'smooth',
-        block: 'start',
-        inline: 'nearest'
-      };
-      element.scrollIntoView(scrollOptions);
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      }
+      element.scrollIntoView(scrollOptions)
+      setTimeout(() => {
+        isScrollingRef.current = false
+      }, 1000)
     }
-  }, []);
+  }, [])
 
   // bug: if user scrolls far enough from current page, and comes back highlighting will stop despite everying looking right
   // my guess is that the auto list re-renders...nah that doesn't make much sense since the use effect should re-trigger.
   // I'd say not worth the time unless users are complaining about it.
   const highlightCurrentWord = useCallback(
     (word: string, charIndex: number) => {
-      //   console.log('charIndex:', charIndex);
-      //   console.log('word:', word);
-      // console.log('charIndexToNodeMap:', charIndexToNodeMap);
-
-      // there is a bug with highlighting "Create a site map (for websites) or list of screens (for desktop apps)."
-      // this is from start small and stay small chapter 3 3rd page (Building it heading)
-
       if (charIndexToNodeMap) {
         if (lastHighlightedWord.current) {
           try {
@@ -345,7 +346,7 @@ const SpeechController: React.FC = () => {
           const highlightSpan = document.createElement("mark")
           range.surroundContents(highlightSpan)
           lastHighlightedWord.current = highlightSpan
-          scrollToHighlightedWord(highlightSpan);
+          scrollToHighlightedWord(highlightSpan)
         }
       }
     },
