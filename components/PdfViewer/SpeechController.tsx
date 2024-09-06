@@ -279,6 +279,35 @@ const SpeechController: React.FC = () => {
     return utterance
   }
 
+  const scrollToHighlightedWord = useCallback((element: HTMLElement) => {
+    if (!element) return;
+  
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    
+    // Calculate the threshold for the bottom 15% of the viewport
+    const scrollThreshold = viewportHeight * 0.85;
+  
+    // Check if the element's bottom is within the bottom 15% of the viewport
+    const isNearBottom = rect.bottom > scrollThreshold;
+
+    const isInViewport = 
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth);
+
+  
+    if (isNearBottom && isInViewport) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      };
+      element.scrollIntoView(scrollOptions);
+    }
+  }, []);
+
   // bug: if user scrolls far enough from current page, and comes back highlighting will stop despite everying looking right
   // my guess is that the auto list re-renders...nah that doesn't make much sense since the use effect should re-trigger.
   // I'd say not worth the time unless users are complaining about it.
@@ -306,7 +335,7 @@ const SpeechController: React.FC = () => {
         const { node, localIndex } = charIndexToNodeMap[charIndex]
         const localWord = node.textContent!.slice(
           localIndex,
-          localIndex + word.length,
+          localIndex + word.length, // returns all if larger
         )
 
         if (localWord === word) {
@@ -316,9 +345,11 @@ const SpeechController: React.FC = () => {
           const highlightSpan = document.createElement("mark")
           range.surroundContents(highlightSpan)
           lastHighlightedWord.current = highlightSpan
+          scrollToHighlightedWord(highlightSpan);
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [charIndexToNodeMap],
   )
 
