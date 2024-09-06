@@ -30,6 +30,7 @@ mark {
   background-size: 110% 100%;
   transform: scale(0.5);
   color: transparent;
+  scroll-margin-top: 10vh;
 }
 
 /* 
