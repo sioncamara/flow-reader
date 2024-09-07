@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { PDFPageProxy } from "pdfjs-dist"
 import arrayWords from "an-array-of-english-words"
+import { mostCommon10kEnWords } from "./commonEnWords"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -292,210 +293,103 @@ export function combineSpans() {
   })
 }
 
-export function combineSplitWordsOld(pageNumber: number) {
-  const englishWords = new Set(arrayWords)
-  englishWords.delete("et")
-  // const pages = document.querySelectorAll(".react-pdf__Page")
-  // console.log("englisgh word has  scient: ", englishWords.has(" scient"))
-  // console.log("englisgh word has et: ", englishWords.has("ist"))
-  // console.log("englisgh word has  scientist: ", englishWords.has("scientist")) // don't know why this is not working
-  // const test = " scien tist"
-  //  console.log(`${test.trim()}`);
-
-  const page = document.querySelector(
-    `.react-pdf__Page[data-page-number="${pageNumber}"]`,
-  )
-  if (!page) {
-    console.log(`Page ${pageNumber} not found`)
-    return
-  }
-  // console.log('page: ', page);
-  // console.log('pageNumber: ', pageNumber);
-
-  const textLayer = page.querySelector(
-    ".react-pdf__Page__textContent.textLayer",
-  )
-  if (textLayer) {
-    const spans = Array.from(
-      textLayer.querySelectorAll('span[role="presentation"]'),
-    )
-
-    if (spans.length === 0) {
-      console.log("no spans found on page: ", pageNumber)
-      return
-    }
-
-    if (
-      pageNumber === 9 ||
-      pageNumber === 10 ||
-      pageNumber === 11 ||
-      pageNumber === 12
-    ) {
-      console.log("inside the text layer of page: ", pageNumber)
-      console.log("textLayer: ", textLayer)
-    }
-
-    for (let i = 0; i < spans.length - 1; i++) {
-      const currentSpan = spans[i] as HTMLSpanElement
-      const nextSpan = spans[i + 1] as HTMLSpanElement
-
-      const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
-
-      const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
-      const combinedWord = currentWord + nextWord
-      if (currentWord === "y") {
-        // console.log("currentWord: ", currentWord)
-        // console.log("nextWord: ", nextWord)
-        // console.log("combinedWord: ", combinedWord)
-        // console.log("englishWords has combinedWord: ", englishWords.has(combinedWord))
-        // console.log("englishWords has currentWord: ", englishWords.has(currentWord))
-        // console.log("englishWords has nextWord: ", englishWords.has(nextWord))
-      }
-      if (
-        (!englishWords.has(currentWord) || currentWord.length === 1) &&
-        (!englishWords.has(nextWord) || !nextSpan.textContent?.includes(" ")) &&
-        englishWords.has(combinedWord)
-      ) {
-        // const combinedWord = currentWord + nextWord
-        // console.log("combinedWord: ", combinedWord)
-        // if (combinedWord === "yet") {
-        //   console.log("combinedWord with yet condition: ", combinedWord)
-        // }
-        // Combine the words
-        currentSpan.textContent! += nextSpan.textContent
-
-        nextSpan.remove()
-
-        // Skip the next iteration since we've already processed the next span
-        i++
-      }
-    }
-  }
-  // })
+const endsWithLetter = (word: string): boolean => {
+  const endsWithLetterRegex = /[a-zA-Z]$/
+  return endsWithLetterRegex.test(word)
 }
 
-export const englishLetters = new Set<string>([
-  "a",
-  "b",
-  "c",
-  "d",
-  "e",
-  "f",
-  "g",
-  "h",
-  "i",
-  "j",
-  "k",
-  "l",
-  "m",
-  "n",
-  "o",
-  "p",
-  "q",
-  "r",
-  "s",
-  "t",
-  "u",
-  "v",
-  "w",
-  "x",
-  "y",
-  "z",
-  "A",
-  "B",
-  "C",
-  "D",
-  "E",
-  "F",
-  "G",
-  "H",
-  "I",
-  "J",
-  "K",
-  "L",
-  "M",
-  "N",
-  "O",
-  "P",
-  "Q",
-  "R",
-  "S",
-  "T",
-  "U",
-  "V",
-  "W",
-  "X",
-  "Y",
-  "Z",
-])
+const startsWithLetter = (word: string): boolean => {
+  const startsWithLetterRegex = /^[a-zA-Z]/
+  return startsWithLetterRegex.test(word)
+}
 
-// export function combineSplitWords(pageNumber: number) {
-//   const englishWords = new Set(arrayWords)
-//   englishWords.delete("et")
+const isCapitalized = (word: string): boolean => {
+  const isCapitalizedRegex = /^[A-Z]/
+  return isCapitalizedRegex.test(word)
+}
 
-//   const page = document.querySelector(
-//     `.react-pdf__Page[data-page-number="${pageNumber}"]`,
-//   )
-//   if (!page) {
-//     console.log(`Page ${pageNumber} not found`)
-//     return
-//   }
+const englishWords = new Set(arrayWords)
 
-//   const textLayer = page.querySelector(
-//     ".react-pdf__Page__textContent.textLayer",
-//   )
-//   if (textLayer) {
-//     const spans = Array.from(
-//       textLayer.querySelectorAll('span[role="presentation"]'),
-//     )
+const englishLetters = new Set(
+  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""),
+)
 
-//     if (spans.length === 0) {
-//       if (pageNumber === 9) console.log("no spans found on page: ", pageNumber)
-//       return
-//     }
+const englishLettersMinusAandI = new Set(
+  Array.from(englishLetters).filter(
+    (letter) => !["a", "A", "i", "I"].includes(letter),
+  ),
+)
 
-//     if (
-//       pageNumber === 9 ||
-//       pageNumber === 10 ||
-//       pageNumber === 11 ||
-//       pageNumber === 12
-//     ) {
-//       console.log("inside the text layer of page: ", pageNumber)
-//       // console.log("textLayer: ", textLayer)
-//     }
+function propSuffix(str: string) {
+  str = str.toLowerCase()
+  let probability = 0
 
-//     for (let i = 0; i < spans.length - 1; i++) {
-//       const currentSpan = spans[i] as HTMLSpanElement
-//       const nextSpan = spans[i + 1] as HTMLSpanElement
+  // Length-based probability
+  if (str.length >= 1 && str.length <= 5) probability += 0.3
+  else if (str.length > 5 && str.length <= 7) probability += 0.2
+  else if (str.length > 7 && str.length <= 13) probability += 0.1
+  else return 0
 
-//       const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
+  // Vowel check (including position)
+  const vowels = str.match(/[aeiou]/g) || []
+  probability += Math.min(vowels.length * 0.1, 0.3)
+  if (
+    vowels.length > 0 &&
+    str.length - str.lastIndexOf(vowels[vowels.length - 1]) <= 2
+  ) {
+    probability += 0.1 // Bonus for vowel near the end
+  }
 
-//       const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
-//       const combinedWord = currentWord + nextWord
+  // Common suffix endings (positional patterns)
+  const commonEndings = [
+    "ly",
+    "al",
+    "ic",
+    "ive",
+    "ous",
+    "ful",
+    "less",
+    "able",
+    "ible",
+  ]
+  if (commonEndings.some((ending) => str.endsWith(ending))) probability += 0.2
 
-//       if (
-//         (!englishWords.has(currentWord) || currentWord.length === 1) &&
-//         (!englishWords.has(nextWord) || !nextSpan.textContent?.includes(" ")) &&
-//         englishWords.has(combinedWord)
-//       ) {
-//         currentSpan.textContent! += nextSpan.textContent
+  // Common starting patterns
+  const commonStarts = ["un", "re", "in", "im", "il", "ir"]
+  if (commonStarts.some((start) => str.startsWith(start))) probability += 0.1
 
-//         nextSpan.remove()
+  // Frequent suffixes (weighted higher)
+  const frequentSuffixes = [
+    "ing",
+    "ed",
+    "ion",
+    "tion",
+    "ation",
+    "al",
+    "ive",
+    "ous",
+    "ity",
+  ]
+  if (frequentSuffixes.includes(str)) probability += 0.3
 
-//         // Skip the next iteration since we've already processed the next span
-//         i++
-//       }
-//     }
-//   }
-// }
+  // Negative patterns (unlikely in suffixes)
+  const negativePatternsRegex = /[jkqvwxz]|[aeiou]{3}|[^aeiou]{4}/
+  if (negativePatternsRegex.test(str)) probability -= 0.2
 
+  // Part of speech hints
+  if (str.endsWith("ly")) probability += 0.1 // Likely adverb
+  if (str.endsWith("ness") || str.endsWith("ity")) probability += 0.1 // Likely noun
+  if (str.endsWith("ive") || str.endsWith("ous")) probability += 0.1 // Likely adjective
+
+  return Math.max(0, Math.min(probability, 1)) // Ensure probability is between 0 and 1
+}
+
+// don't think recursion is needed with initial timeout, but my mac is fast, so keeping for redudency for now
 export function combineSplitWords(
   pageNumber: number,
-  maxAttempts: number = 11,
+  initializeTextIfInitialPage: (textLayer: Element | null) => void,
+  maxAttempts: number = 5,
 ): void {
-  const englishWords = new Set(arrayWords)
-  englishWords.delete("et")
-
   function attemptCombineWords(attempt: number): void {
     if (attempt > maxAttempts) {
       console.log(`Max attempts reached for page ${pageNumber}`)
@@ -513,126 +407,166 @@ export function combineSplitWords(
     const textLayer = page.querySelector(
       ".react-pdf__Page__textContent.textLayer",
     )
-    // if (!textLayer) {
-    //   console.log(`Text layer not found on page ${pageNumber}`);
-    //   return;
-    // }
 
     const spans = Array.from(
       textLayer?.querySelectorAll('span[role="presentation"]') || [],
     )
 
     if (spans.length === 0) {
-      if (pageNumber === 9)
-        console.log(
-          `No spans found on page ${pageNumber}, attempt ${attempt}. Retrying...`,
-        )
-      setTimeout(() => attemptCombineWords(attempt + 1), 2000) // Wait 100ms before retrying
+      console.log(
+        `No spans found on page ${pageNumber}, attempt ${attempt}. Retrying...`,
+      )
+      setTimeout(() => attemptCombineWords(attempt + 1), 500)
       return
     }
 
-    if (pageNumber === 9) {
-      console.log("spans found on attempt: ", attempt)
-      console.log("spans: ", spans)
-      // console.log('textLayer: ', textLayer);
-    }
     for (let i = 0; i < spans.length - 1; i++) {
       const currentSpan = spans[i] as HTMLSpanElement
       const nextSpan = spans[i + 1] as HTMLSpanElement
 
-      const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
-      const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
-      const combinedWord = currentWord + nextWord
+      const rawCurrentWord = currentSpan.textContent || ""
+      const currentWordOriginalCase = (() => {
+        const match = rawCurrentWord?.match(/\S+$/) // Match the last group of non-whitespace characters
+        return match ? match[0] : ""
+      })()
+      const currentWord = currentWordOriginalCase.toLowerCase()
+      const currentWordNoPunctuation = currentWord.replace(
+        /^[^a-zA-Z]+|[^a-zA-Z]+$/g,
+        "",
+      ) // Remove non-alphabetic characters at the start or end
 
-      // if (combinedWord === "yet") console.log('the word is yet');
-
-      if (
-        ((currentWord !== "" && !englishWords.has(currentWord)) ||
-          currentWord.length === 1) &&
-        ((nextWord !== "" && !englishWords.has(nextWord)) ||
-          !nextSpan.textContent?.includes(" ")) &&
-        englishWords.has(combinedWord)
-      ) {
-        // if (pageNumber === 9 && combinedWord === "yet") {
-        //     console.log(`Combining words: "${currentWord}" + "${nextWord}" = "${combinedWord}"`)
-        //     console.log('length of currentWord: ', currentWord.length);
-
-        // }
-        currentSpan.textContent! += nextSpan.textContent
-        nextSpan.remove()
-        // if (pageNumber === 9 && combinedWord === "yet") {
-        //   console.log('currentSpan: ', currentSpan);
-        // }
-        i++
-      }
-    }
-  }
-
-  attemptCombineWords(1)
-}
-
-export function combineSplitWords2() {
-  const englishWords = new Set(arrayWords)
-  englishWords.delete("et")
-  const pages = document.querySelectorAll(".react-pdf__Page")
-  // console.log("englisgh word has  scient: ", englishWords.has(" scient"))
-  // console.log("englisgh word has et: ", englishWords.has("ist"))
-  // console.log("englisgh word has  scientist: ", englishWords.has("scientist")) // don't know why this is not working
-  // const test = " scien tist"
-  //  console.log(`${test.trim()}`);
-
-  pages.forEach((page) => {
-    // console.log('page: ', page);
-
-    const textLayer = page.querySelector(
-      ".react-pdf__Page__textContent.textLayer",
-    )
-
-    console.log("textLayer: ", textLayer)
-
-    if (textLayer) {
-      const spans = Array.from(
-        textLayer.querySelectorAll('span[role="presentation"]'),
+      const rawNextWord = nextSpan.textContent || ""
+      const nextWordOriginalCase = (() => {
+        const containsAlphanumericRegex = /\S*[a-zA-Z0-9]\S*/ // accounts for rare edge cases such as ", n"
+        const match = rawNextWord?.match(containsAlphanumericRegex)
+        return match ? match[0] : ""
+      })()
+      const nextWord = nextWordOriginalCase.toLowerCase()
+      const nextWordNoPunctuation = nextWord.replace(
+        /^[^a-zA-Z]+|[^a-zA-Z]+$/g,
+        "",
       )
+      const combinedWordNoPunctuation =
+        currentWordNoPunctuation + nextWordNoPunctuation
 
-      // console.log('inside the text layer');
+      const nextStartsWithLetter = startsWithLetter(nextWord)
+      const currentEndsWithLetter = endsWithLetter(currentWord)
+      const noPuncBetweenWords = currentEndsWithLetter && nextStartsWithLetter
 
-      for (let i = 0; i < spans.length - 1; i++) {
-        const currentSpan = spans[i] as HTMLSpanElement
-        const nextSpan = spans[i + 1] as HTMLSpanElement
+      const hasCurrentNotNextHasCombined = (() => {
+        return (
+          englishWords.has(currentWordNoPunctuation) &&
+          !englishWords.has(nextWordNoPunctuation) &&
+          !isCapitalized(nextWordOriginalCase) &&
+          (englishWords.has(currentWord + nextWordNoPunctuation) ||
+            mostCommon10kEnWords.has(currentWord + nextWordNoPunctuation))
+        )
+      })()
 
-        const currentWord = currentSpan.textContent?.trim().toLowerCase() || ""
+      const notFirstWordSecondMightBeCombinedIs = (() => {
+        return (
+          noPuncBetweenWords &&
+          (!englishWords.has(currentWordNoPunctuation) ||
+            englishLettersMinusAandI.has(currentWord)) &&
+          (!englishWords.has(nextWordNoPunctuation) ||
+            !rawNextWord.includes(" ") ||
+            mostCommon10kEnWords.has(currentWord + nextWordNoPunctuation)) &&
+          englishWords.has(combinedWordNoPunctuation)
+        )
+      })()
 
-        const nextWord = nextSpan.textContent?.trim().toLowerCase() || ""
-        const combinedWord = currentWord + nextWord
-        if (currentWord === "y") {
-          // console.log("currentWord: ", currentWord)
-          // console.log("nextWord: ", nextWord)
-          // console.log("combinedWord: ", combinedWord)
-          // console.log("englishWords has combinedWord: ", englishWords.has(combinedWord))
-          // console.log("englishWords has currentWord: ", englishWords.has(currentWord))
-          // console.log("englishWords has nextWord: ", englishWords.has(nextWord))
-        }
-        if (
-          (!englishWords.has(currentWord) || currentWord.length === 1) &&
-          (!englishWords.has(nextWord) ||
-            !nextSpan.textContent?.includes(" ")) &&
-          englishWords.has(combinedWord)
-        ) {
-          // const combinedWord = currentWord + nextWord
-          // console.log("combinedWord: ", combinedWord)
-          // if (combinedWord === "yet") {
-          //   console.log("combinedWord with yet condition: ", combinedWord)
-          // }
-          // Combine the words
-          currentSpan.textContent! += nextSpan.textContent
+      const threeMakesAWord = (() => {
+        if (i + 2 > spans.length - 1) return false
+        const secondCouldBeMiddle =
+          !rawNextWord.includes(" ") &&
+          startsWithLetter(rawNextWord) &&
+          endsWithLetter(rawNextWord)
+        if (!secondCouldBeMiddle) return false
+        const rawThirdWord = spans[i + 2].textContent || ""
+        const thirdWordOriginalCase = (() => {
+          const match = rawThirdWord?.match(/^\S+/) // Match the first group of non-whitespace characters
+          return match ? match[0] : ""
+        })()
+        const thirdWord = thirdWordOriginalCase.toLowerCase()
+        const thirdWordNoPunctuation = thirdWord.replace(
+          /^[^a-zA-Z]+|[^a-zA-Z]+$/g,
+          "",
+        )
 
+        const noPuncBetweenSegments =
+          currentEndsWithLetter && startsWithLetter(thirdWord)
+
+        return (
+          noPuncBetweenSegments &&
+          englishWords.has(
+            currentWordNoPunctuation + rawNextWord + thirdWordNoPunctuation,
+          )
+        )
+      })()
+
+      const nextIsLikelySuffix =
+        noPuncBetweenWords &&
+        englishWords.has(currentWordNoPunctuation) &&
+        englishWords.has(nextWordNoPunctuation) &&
+        !mostCommon10kEnWords.has(nextWordNoPunctuation) &&
+        propSuffix(nextWordNoPunctuation) > 0.6 &&
+        englishWords.has(combinedWordNoPunctuation)
+
+      const combinedIsLikelyCommon = (() => {
+        const bothAreWords =
+          englishWords.has(currentWordNoPunctuation) &&
+          englishWords.has(nextWordNoPunctuation)
+
+        const atMostOneIsCommon =
+          !mostCommon10kEnWords.has(currentWordNoPunctuation) ||
+          !mostCommon10kEnWords.has(nextWordNoPunctuation)
+
+        return (
+          noPuncBetweenWords &&
+          bothAreWords &&
+          atMostOneIsCommon &&
+          mostCommon10kEnWords.has(combinedWordNoPunctuation)
+        )
+      })()
+
+      if (currentWord !== "" && nextWord !== "") {
+        if (threeMakesAWord) {
+          const thirdSpan = spans[i + 2] as HTMLSpanElement
+          const combinedText =
+            currentSpan.textContent! +
+            nextSpan.textContent +
+            thirdSpan.textContent
+          currentSpan.textContent = combinedText
           nextSpan.remove()
+          thirdSpan.remove()
 
-          // Skip the next iteration since we've already processed the next span
+          const lastWordOfCombined =
+            combinedText.trim().split(/\s+/).pop()?.toLowerCase() || ""
+
+          const needToCheckWord =
+            endsWithLetter(lastWordOfCombined) &&
+            !isCapitalized(lastWordOfCombined)
+
+          if (needToCheckWord) {
+            spans[i + 2] = spans[i]
+
+            i += 1
+          } else i += 2
+        } else if (
+          notFirstWordSecondMightBeCombinedIs ||
+          hasCurrentNotNextHasCombined ||
+          nextIsLikelySuffix ||
+          combinedIsLikelyCommon
+        ) {
+          currentSpan.textContent! += nextSpan.textContent
+          nextSpan.remove()
           i++
         }
       }
     }
-  })
+
+    initializeTextIfInitialPage(textLayer)
+  }
+
+  attemptCombineWords(1)
 }
