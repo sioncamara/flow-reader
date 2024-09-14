@@ -16,7 +16,7 @@ import { useResizeObserver } from "@wojtekmaj/react-hooks"
 import { getCoverImage } from "@/lib/utils"
 import DragNdrop from "../DragNdrop"
 import PdfPageList from "./PdfPageList"
-import SpeechController from "./SpeechController"
+import { SpeechController } from "../SpeechController"
 import { useRemoteStore } from "@/store/useRemoteStore"
 
 export type PdfStore = DBSchema & {
@@ -262,7 +262,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
                             width={48}
                             height={48}
                           />
-                          <div className=" mr-5 max-h-0 max-w-0 overflow-hidden opacity-0 transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
+                          <div className=" mr-5 max-h-0 max-w-0 overflow-hidden transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
                             <Outline
                               className="space-y-6 rounded-lg bg-slate-100/30 p-4"
                               onItemClick={handleTocSelect}
