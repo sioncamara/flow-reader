@@ -3,6 +3,7 @@ import { useRemoteStore } from "@/store/useRemoteStore"
 import { useVoices } from "react-text-to-speech"
 import type { CharIndexToNodeMap } from "@/store/useRemoteStore"
 import { toast } from "../ui/use-toast"
+import RateSlider from "./RateSlider"
 
 type FixedSizeListState = {
   instance: any
@@ -16,7 +17,6 @@ const SpeechController: React.FC = () => {
   const {
     readingPageIndex,
     currTextPageIndex,
-    isPaused,
     isPlaying,
     rate,
     lang,
@@ -28,7 +28,6 @@ const SpeechController: React.FC = () => {
     setWordSelectedOnOtherPage,
     setReachedUtteranceEnd,
     setReadingPageIndex,
-    setIsPaused,
     setIsPlaying,
     setRate,
     setLang,
@@ -39,11 +38,15 @@ const SpeechController: React.FC = () => {
   const [tempRate, setTempRate] = useState(rate)
   const [startOffset, setStartOffset] = useState<number>(0)
   const [parentElement, setParentElement] = useState<HTMLElement | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [rotation, setRotation] = useState(0)
+
   const lastHighlightedWord = useRef<HTMLElement | null>(null)
   const currentCharIndexRef = useRef<number>(0)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const nextWordIndexRef = useRef<number>(0)
   const isScrollingRef = useRef(false)
+  const speechControllerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (wordSelectedOnOtherPage) {
@@ -61,10 +64,21 @@ const SpeechController: React.FC = () => {
   }, [currTextPageIndex])
 
   useEffect(() => {
-    // need to handle how to get this to work when clicking on a page other than the current one being spoken. Don't think this is worth fixing, unless a
-    // consistant user pain point.
-    // different area, but there is also bugs for some text (hiphen cases as well as other word break down issues) think the function I previoulsy had will resolve most of these.
-    const handleDoubleClick = () => {
+    const handleDoubleClick = (event: MouseEvent) => {
+      console.log("speechControllerRef.current:", speechControllerRef.current)
+      console.log("event?.target:", event?.target)
+      console.log(
+        "cointains target:",
+        speechControllerRef.current?.contains(event?.target as Node),
+      )
+
+      if (
+        speechControllerRef.current &&
+        speechControllerRef.current.contains(event?.target as Node)
+      ) {
+        event?.stopPropagation()
+        return
+      }
       const selection = window.getSelection()
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0)
@@ -80,7 +94,6 @@ const SpeechController: React.FC = () => {
 
           handleStop()
           if (isPlaying && readingPageIndex !== currTextPageIndex) {
-            console.log("should not do anything right now")
             setParentElement(parentElement)
             setStartOffset(startOffset)
             setWordSelectedOnOtherPage(true)
@@ -110,7 +123,7 @@ const SpeechController: React.FC = () => {
     if (charIndexToNodeMap === null) {
       toast({
         title: "Hi there 👋",
-        description: "Was loading, please try again.",
+        description: "I was loading, please try again.",
       })
       return
     }
@@ -131,9 +144,6 @@ const SpeechController: React.FC = () => {
             lastHighlightedWord.current.innerHTML,
           )
         ) {
-          // resetHighlightedWord()
-          // handlePlay()
-          // return
           parentElement = lastHighlightedWord.current.parentElement
           console.log("parent element set")
         }
@@ -167,26 +177,13 @@ const SpeechController: React.FC = () => {
   }
 
   const handlePlay = () => {
-    if (isPaused) {
-      window.speechSynthesis.resume()
-      setIsPaused(false)
-    } else {
-      window.speechSynthesis.cancel()
+    window.speechSynthesis.cancel()
 
-      const newUtterance = createUtterance(
-        combinedText,
-        nextWordIndexRef.current,
-      )
-      utteranceRef.current = newUtterance
-      window.speechSynthesis.speak(newUtterance)
-    }
+    const newUtterance = createUtterance(combinedText, nextWordIndexRef.current)
+    utteranceRef.current = newUtterance
+    window.speechSynthesis.speak(newUtterance)
+
     setIsPlaying(true)
-  }
-
-  const handlePause = () => {
-    window.speechSynthesis.pause()
-    setIsPaused(true)
-    setIsPlaying(false)
   }
 
   const handleStop = () => {
@@ -208,17 +205,20 @@ const SpeechController: React.FC = () => {
     setVoiceURI(newVoiceURI)
   }
 
-  const handleRateChangeEnd = () => {
+  const handleRateChangeEnd = (newRate: number[]) => {
+    const newRateValue = newRate[0]
+    setTempRate(newRateValue)
+
     if (utteranceRef.current && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel()
       const newUtterance = createUtterance(
         combinedText,
         nextWordIndexRef.current,
-        { rate: tempRate },
+        { rate: newRateValue },
       )
       window.speechSynthesis.speak(newUtterance)
     }
-    setRate(tempRate)
+    setRate(newRateValue)
   }
 
   const createUtterance = (
@@ -265,7 +265,8 @@ const SpeechController: React.FC = () => {
 
     utterance.onerror = (error) => {
       console.error("Speech synthesis error:", error)
-      setIsPaused(false)
+      if (error.error !== "interrupted" && error.error !== "canceled")
+        setIsPlaying(false)
     }
 
     utterance.onend = (event) => {
@@ -273,8 +274,6 @@ const SpeechController: React.FC = () => {
       console.log("this is the end")
       setReadingPageIndex(readingPageIndex + 1) // only triggers side effect if user did not bring next page into view
       setReachedUtteranceEnd(true)
-
-      setIsPaused(false)
     }
 
     return utterance
@@ -287,10 +286,8 @@ const SpeechController: React.FC = () => {
     const viewportHeight =
       window.innerHeight || document.documentElement.clientHeight
 
-    // Calculate the threshold for the bottom 15% of the viewport
     const scrollThreshold = viewportHeight * 0.85
 
-    // Check if the element's bottom is within the bottom 15% of the viewport
     const isNearBottom = rect.bottom > scrollThreshold
 
     const isInViewport =
@@ -333,20 +330,24 @@ const SpeechController: React.FC = () => {
           }
         }
 
-        const { node, localIndex } = charIndexToNodeMap[charIndex]
-        const localWord = node.textContent!.slice(
-          localIndex,
-          localIndex + word.length, // returns all if larger
-        )
+        try {
+          const { node, localIndex } = charIndexToNodeMap[charIndex]
+          const localWord = node.textContent!.slice(
+            localIndex,
+            localIndex + word.length, // returns all if larger
+          )
 
-        if (localWord === word) {
-          const range = document.createRange()
-          range.setStart(node.firstChild!, localIndex)
-          range.setEnd(node.firstChild!, localIndex + word.length)
-          const highlightSpan = document.createElement("mark")
-          range.surroundContents(highlightSpan)
-          lastHighlightedWord.current = highlightSpan
-          scrollToHighlightedWord(highlightSpan)
+          if (localWord === word) {
+            const range = document.createRange()
+            range.setStart(node.firstChild!, localIndex)
+            range.setEnd(node.firstChild!, localIndex + word.length)
+            const highlightSpan = document.createElement("mark")
+            range.surroundContents(highlightSpan)
+            lastHighlightedWord.current = highlightSpan
+            scrollToHighlightedWord(highlightSpan)
+          }
+        } catch (error) {
+          console.log("Error in highlightCurrentWord:", error)
         }
       }
     },
@@ -354,7 +355,7 @@ const SpeechController: React.FC = () => {
     [charIndexToNodeMap],
   )
 
-  function easeInOutCubic(t: number): number {
+  const easeInOutCubic = (t: number): number => {
     return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
   }
 
@@ -391,53 +392,143 @@ const SpeechController: React.FC = () => {
     [listRef],
   )
 
+  const handlePlayPauseButtonClick = () => {
+    setIsAnimating(true)
+    setRotation((prev) => prev + 360)
+
+    setTimeout(() => {
+      if (isPlaying) {
+        handleStop()
+      } else {
+        handlePlay()
+      }
+    }, 150)
+
+    setTimeout(() => {
+      setIsAnimating(false)
+    }, 300)
+  }
+
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex flex-auto -translate-x-1/2 transform gap-3 rounded-lg bg-white p-2 shadow-md">
-      <button onClick={handlePlay}>{isPaused ? "Resume" : "Play"}</button>
-      <button onClick={handlePause}>Pause</button>
-      <button onClick={handleStop}>Stop</button>
-      <div className="flex flex-col items-center">
-        <label htmlFor="rate-slider" className="text-sm">
-          Rate: {tempRate.toFixed(1) || rate.toFixed(1)}
-        </label>
-        <input
-          id="rate-slider"
-          type="range"
-          min="0.5"
-          max="10"
-          step="0.1"
-          value={tempRate || rate}
-          onChange={(e) => setTempRate(parseFloat(e.target.value))}
-          onMouseUp={handleRateChangeEnd}
-          onTouchEnd={handleRateChangeEnd}
-          className="w-32"
-        />
-      </div>
-      <select value={lang} onChange={(e) => setLang(e.target.value)}>
-        <option value="">Choose a language</option>
-        {languages.map((lang) => (
-          <option key={lang} value={lang}>
-            {lang}
-          </option>
-        ))}
-      </select>
-      <select
-        value={voiceURI}
-        onChange={(e) => handleVoiceChange(e.target.value)}
+    <>
+      <div
+        ref={speechControllerRef}
+        className="fixed bottom-4 left-1/2 z-50 flex flex-auto -translate-x-1/2 transform items-center gap-3 rounded-lg bg-white p-2 shadow-md"
       >
-        <option value="">Choose a voice</option>
-        {voices
-          .filter((voice) => !lang || voice.lang === lang)
-          .map((voice) => (
-            <option
-              key={`${voice.voiceURI}-${voice.lang}-${voice.default}`}
-              value={voice.name}
+        <button
+          onClick={handlePlayPauseButtonClick}
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-sky-500 transition-colors hover:bg-sky-600 focus:outline-none"
+          disabled={isAnimating}
+        >
+          <div
+            className="relative h-6 w-6 transition-transform duration-300 ease-in-out"
+            style={{ transform: `rotate(${rotation}deg)` }}
+          >
+            <div
+              className={`
+              absolute inset-0 transition-all duration-300 ease-in-out
+              ${isPlaying ? "scale-100 opacity-100" : "scale-60 opacity-0"}
+            `}
             >
-              {voice.name} ({voice.lang})
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="white"
+                className="h-6 w-6"
+              >
+                <rect x="6" y="5" width="4" height="14" fill="white" />
+                <rect x="14" y="5" width="4" height="14" fill="white" />
+              </svg>
+            </div>
+            <div
+              className={`
+              absolute inset-0 transition-all duration-300 ease-in-out
+              ${isPlaying ? "scale-60 opacity-0" : "scale-100 opacity-100"}
+            `}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="white"
+                className="h-6 w-6"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
+        </button>
+        {/* <select value={lang} onChange={(e) => setLang(e.target.value)}>
+          <option value="">Choose a language</option>
+          {languages.map((lang) => (
+            <option key={lang} value={lang}>
+              {lang}
             </option>
           ))}
-      </select>
-    </div>
+        </select>
+        <select
+          value={voiceURI}
+          onChange={(e) => handleVoiceChange(e.target.value)}
+        >
+          <option value="">Choose a voice</option>
+          {voices
+            .filter((voice) => !lang || voice.lang === lang)
+            .map((voice) => (
+              <option
+                key={`${voice.voiceURI}-${voice.lang}-${voice.default}`}
+                value={voice.name}
+              >
+                {voice.name} ({voice.lang})
+              </option>
+            ))}
+        </select> */}
+        <button
+          onClick={() => handleRateChangeEnd([Math.max(0.5, rate - 0.25)])}
+          disabled={rate <= 0.5}
+          className={`flex h-6 w-6 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium transition-colors
+            ${
+              rate <= 0.5
+                ? "cursor-not-allowed text-slate-400 opacity-50"
+                : "text-slate-500 hover:bg-sky-600 hover:text-white"
+            }`}
+        >
+          -
+        </button>
+        <div className="group relative flex cursor-pointer flex-col self-center ">
+          <div className="absolute bottom-full -my-2 hidden overflow-hidden rounded-lg bg-white  pl-4 shadow-md group-hover:flex  group-hover:flex-1 group-hover:gap-2 group-hover:border-x-8 group-hover:border-y-[16px] group-hover:border-white">
+            <RateSlider
+              tempRate={tempRate}
+              setTempRate={setTempRate}
+              // @ts-ignore
+              handleRateChangeEnd={handleRateChangeEnd}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium text-slate-500 transition-colors group-hover:bg-sky-600 group-hover:text-white">
+              <div className="flex items-baseline">
+                {rate.toFixed(2)}
+                <span className="relative -bottom-[0.2rem] font-sans  text-sm ">
+                  x
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            handleRateChangeEnd([Math.min(2, rate + 0.25)])
+          }}
+          disabled={rate >= 2}
+          className={`flex h-6 w-6 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium transition-colors
+            ${
+              rate >= 2
+                ? "cursor-not-allowed text-slate-400 opacity-50"
+                : "text-slate-500 hover:bg-sky-600 hover:text-white"
+            }`}
+        >
+          +
+        </button>
+      </div>
+    </>
   )
 }
 

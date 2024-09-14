@@ -43,7 +43,7 @@ const initialState = {
   isPlaying: false,
   reachedUtteranceEnd: false,
   utterance: null,
-  rate: 2.4,
+  rate: 2.0,
   lang: "en-US",
   voiceURI: "Microsoft Guy Online (Natural) - English (United States)",
   combinedText: "",

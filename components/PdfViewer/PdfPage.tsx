@@ -34,6 +34,10 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
     (state) => state.setCharIndexToNodeMap,
   )
 
+  const setReadingPageIndex = useRemoteStore(
+    (state) => state.setReadingPageIndex,
+  )
+
   const pageRef = useRef<HTMLDivElement | null>(
     null,
   ) as React.MutableRefObject<HTMLDivElement | null>
@@ -68,6 +72,31 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
         setCurrTextPageIndex(index)
       } else {
         console.log("No spans with role presentation found in the text layer")
+        for (let i = 1; i <= 3; i++) {
+          const nextPage = document.querySelector(
+            `.react-pdf__Page[data-page-number="${index + i + 1}"]`,
+          )
+          if (!nextPage) {
+            console.log(`Page ${index + i + 1} not found in the document`)
+            break
+          }
+
+          const nextPageTextSpans = Array.from(
+            nextPage.querySelectorAll('.textLayer span[role="presentation"]'),
+          )
+
+          if (nextPageTextSpans.length > 0) {
+            const fullText = nextPageTextSpans
+              .map((textSpan) => textSpan.textContent || "")
+              .join(" ")
+              .trim()
+            setRemoteCombinedText(fullText)
+            processIndexToNodeMap(nextPageTextSpans)
+            setCurrTextPageIndex(index + i)
+            setReadingPageIndex(index + i)
+            break
+          }
+        }
       }
     }
 
