@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRemoteStore } from "@/store/useRemoteStore"
-import { useVoices } from "react-text-to-speech"
+import { useVoices } from "@/lib/hooks"
 import type { CharIndexToNodeMap } from "@/store/useRemoteStore"
 import { toast } from "../ui/use-toast"
 import RateSlider from "./RateSlider"
@@ -392,6 +392,19 @@ const SpeechController: React.FC = () => {
     [listRef],
   )
 
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.code === 'Space' && !event.repeat) {
+        event.preventDefault();
+        handlePlayPauseButtonClick();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
+
   const handlePlayPauseButtonClick = () => {
     setIsAnimating(true)
     setRotation((prev) => prev + 360)
@@ -413,7 +426,7 @@ const SpeechController: React.FC = () => {
     <>
       <div
         ref={speechControllerRef}
-        className="fixed bottom-4 left-1/2 z-50 flex flex-auto -translate-x-1/2 transform items-center gap-3 rounded-lg bg-white p-2 shadow-md"
+        className="fixed bottom-1 left-1/2 z-50 flex flex-auto -translate-x-1/2 transform items-center gap-3 rounded-lg bg-white p-2 shadow-md"
       >
         <button
           onClick={handlePlayPauseButtonClick}
