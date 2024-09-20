@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from "react"
+import React, { useEffect, useRef, useCallback } from "react"
 import { Page } from "react-pdf"
 import { CSSProperties } from "react"
 import { useRemoteStore } from "@/store/useRemoteStore"
@@ -25,6 +25,8 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
   const wordSelectedOnOtherPage = useRemoteStore(
     (state) => state.wordSelectedOnOtherPage,
   )
+
+  const lang = useRemoteStore((state) => state.lang)
 
   const setRemoteCombinedText = useRemoteStore((state) => state.setCombinedText)
   const setCurrTextPageIndex = useRemoteStore(
@@ -149,10 +151,13 @@ const PdfPage: React.FC<PDFPageProps> = ({ index, width, style }) => {
 
   const onRenderSuccess = () => {
     setTimeout(() => {
-      hideRepeateText() // can be made more efficient
-      setTimeout(() => {
-        combineSplitWords(index + 1, initializeTextIfInitialPage)
-      }, 100)
+      hideRepeateText() // can be made more efficient and better (hides some common words)
+      if (lang.split("-")[0] === "en") {
+        // more state manipulation is needed for this to work
+        setTimeout(() => {
+          combineSplitWords(index + 1, initializeTextIfInitialPage)
+        }, 100)
+      }
     }, 1000)
   }
 

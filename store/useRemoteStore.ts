@@ -15,7 +15,7 @@ type remoteState = {
   utterance: SpeechSynthesisUtterance | null
   rate: number
   lang: string
-  voiceURI: string
+  voiceName: string
   combinedText: string
   charIndexToNodeMap: CharIndexToNodeMap | null
   wordSelectedOnOtherPage: boolean
@@ -27,7 +27,7 @@ type remoteState = {
   setUtterance: (utterance: SpeechSynthesisUtterance | null) => void
   setRate: (rate: number) => void
   setLang: (lang: string) => void
-  setVoiceURI: (voiceURI: string) => void
+  setVoiceName: (voiceURI: string) => void
   setCombinedText: (text: string) => void
   setCharIndexToNodeMap: (charIndexToNodeMap: CharIndexToNodeMap) => void
   listRef: FixedSizeList<any> | null
@@ -43,9 +43,10 @@ const initialState = {
   isPlaying: false,
   reachedUtteranceEnd: false,
   utterance: null,
-  rate: 2.0,
+  rate: 1.0,
   lang: "en-US",
-  voiceURI: "Microsoft Guy Online (Natural) - English (United States)",
+  voiceName:
+    "Microsoft AndrewMultilingual Online (Natural) - English (United States)",
   combinedText: "",
   charIndexToNodeMap: null,
   listRef: null,
@@ -64,7 +65,7 @@ export const useRemoteStore = create<remoteState>((set) => ({
   setUtterance: (utterance) => set({ utterance }),
   setRate: (rate) => set({ rate }),
   setLang: (lang) => set({ lang }),
-  setVoiceURI: (voiceURI) => set({ voiceURI }),
+  setVoiceName: (voiceURI) => set({ voiceName: voiceURI }),
   setCombinedText: (combinedText) => set({ combinedText }),
   setCharIndexToNodeMap: (charIndexToNodeMap) => set({ charIndexToNodeMap }),
   setListRef: (listRef) => set({ listRef }),

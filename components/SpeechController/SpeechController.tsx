@@ -4,6 +4,7 @@ import { useVoices } from "@/lib/hooks"
 import type { CharIndexToNodeMap } from "@/store/useRemoteStore"
 import { toast } from "../ui/use-toast"
 import RateSlider from "./RateSlider"
+import SelectVoice from "./SelectVoice"
 
 type FixedSizeListState = {
   instance: any
@@ -20,7 +21,7 @@ const SpeechController: React.FC = () => {
     isPlaying,
     rate,
     lang,
-    voiceURI,
+    voiceName,
     combinedText,
     charIndexToNodeMap,
     listRef,
@@ -31,9 +32,9 @@ const SpeechController: React.FC = () => {
     setIsPlaying,
     setRate,
     setLang,
-    setVoiceURI,
+    setVoiceName,
   } = useRemoteStore()
-  const { languages, voices } = useVoices()
+  const { voices } = useVoices()
 
   const [tempRate, setTempRate] = useState(rate)
   const [startOffset, setStartOffset] = useState<number>(0)
@@ -47,6 +48,30 @@ const SpeechController: React.FC = () => {
   const nextWordIndexRef = useRef<number>(0)
   const isScrollingRef = useRef(false)
   const speechControllerRef = useRef<HTMLDivElement>(null)
+
+  const [showSlider, setShowSlider] = useState(false)
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleMouseEnter = () => {
+    hoverTimerRef.current = setTimeout(() => {
+      setShowSlider(true)
+    }, 500)
+  }
+
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current)
+    }
+    setShowSlider(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (wordSelectedOnOtherPage) {
@@ -112,7 +137,7 @@ const SpeechController: React.FC = () => {
       document.removeEventListener("dblclick", handleDoubleClick)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charIndexToNodeMap, voiceURI, rate, readingPageIndex])
+  }, [charIndexToNodeMap, voiceName, rate, readingPageIndex])
 
   const startSpeechFromDoubleClick = (
     providedParentElement: HTMLElement,
@@ -191,18 +216,18 @@ const SpeechController: React.FC = () => {
     setIsPlaying(false)
   }
 
-  const handleVoiceChange = (newVoiceURI: string) => {
+  const handleVoiceChange = (newVoiceName: string) => {
     if (utteranceRef.current && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel()
       const newUtterance = createUtterance(
         combinedText,
         nextWordIndexRef.current,
-        { voiceURI: newVoiceURI },
+        { voiceName: newVoiceName },
       )
       utteranceRef.current = newUtterance
       window.speechSynthesis.speak(newUtterance)
     }
-    setVoiceURI(newVoiceURI)
+    setVoiceName(newVoiceName)
   }
 
   const handleRateChangeEnd = (newRate: number[]) => {
@@ -224,13 +249,14 @@ const SpeechController: React.FC = () => {
   const createUtterance = (
     text: string,
     startIndex: number,
-    options?: { rate?: number; voiceURI?: string },
+    options?: { rate?: number; voiceName?: string },
   ) => {
     const utterance = new SpeechSynthesisUtterance(text.slice(startIndex))
     utterance.lang = lang
     utterance.voice =
-      voices.find((voice) => voice.name === (options?.voiceURI || voiceURI)) ||
-      null
+      voices.find(
+        (voice) => voice.name === (options?.voiceName || voiceName),
+      ) || null
     utterance.rate = options?.rate || rate
 
     utterance.onstart = (event) => {
@@ -363,7 +389,7 @@ const SpeechController: React.FC = () => {
     (index: number) => {
       if (listRef) {
         const startTime = performance.now()
-        const duration = 500 // Adjust as needed
+        const duration = 300
 
         const startScrollOffset = (listRef.state as FixedSizeListState)
           .scrollOffset
@@ -394,16 +420,16 @@ const SpeechController: React.FC = () => {
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.code === 'Space' && !event.repeat) {
-        event.preventDefault();
-        handlePlayPauseButtonClick();
+      if (event.code === "Space" && !event.repeat) {
+        event.preventDefault()
+        handlePlayPauseButtonClick()
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying]);
+    document.addEventListener("keydown", handleKeyPress)
+    return () => document.removeEventListener("keydown", handleKeyPress)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying])
 
   const handlePlayPauseButtonClick = () => {
     setIsAnimating(true)
@@ -426,8 +452,18 @@ const SpeechController: React.FC = () => {
     <>
       <div
         ref={speechControllerRef}
-        className="fixed bottom-1 left-1/2 z-50 flex flex-auto -translate-x-1/2 transform items-center gap-3 rounded-lg bg-white p-2 shadow-md"
+        className="fixed bottom-1 z-50 flex w-72 items-center justify-around gap-6  self-center rounded-lg bg-white p-2 px-6 shadow-md"
       >
+        <div className="mr-3">
+          <SelectVoice
+            voices={voices.filter((voice) => voice.lang === lang)}
+            voiceName={voiceName}
+            selectedVoice={voices.find((voice) => voice.name === voiceName)}
+            handleVoiceChange={handleVoiceChange}
+            lang={lang}
+            setLang={setLang}
+          />
+        </div>
         <button
           onClick={handlePlayPauseButtonClick}
           className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-sky-500 transition-colors hover:bg-sky-600 focus:outline-none"
@@ -470,76 +506,62 @@ const SpeechController: React.FC = () => {
             </div>
           </div>
         </button>
-        {/* <select value={lang} onChange={(e) => setLang(e.target.value)}>
-          <option value="">Choose a language</option>
-          {languages.map((lang) => (
-            <option key={lang} value={lang}>
-              {lang}
-            </option>
-          ))}
-        </select>
-        <select
-          value={voiceURI}
-          onChange={(e) => handleVoiceChange(e.target.value)}
-        >
-          <option value="">Choose a voice</option>
-          {voices
-            .filter((voice) => !lang || voice.lang === lang)
-            .map((voice) => (
-              <option
-                key={`${voice.voiceURI}-${voice.lang}-${voice.default}`}
-                value={voice.name}
-              >
-                {voice.name} ({voice.lang})
-              </option>
-            ))}
-        </select> */}
-        <button
-          onClick={() => handleRateChangeEnd([Math.max(0.5, rate - 0.25)])}
-          disabled={rate <= 0.5}
-          className={`flex h-6 w-6 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium transition-colors
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleRateChangeEnd([Math.max(0.5, rate - 0.25)])}
+            disabled={rate <= 0.5}
+            className={`flex h-6 w-6 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium transition-colors
             ${
               rate <= 0.5
                 ? "cursor-not-allowed text-slate-400 opacity-50"
                 : "text-slate-500 hover:bg-sky-600 hover:text-white"
             }`}
-        >
-          -
-        </button>
-        <div className="group relative flex cursor-pointer flex-col self-center ">
-          <div className="absolute bottom-full -my-2 hidden overflow-hidden rounded-lg bg-white  pl-4 shadow-md group-hover:flex  group-hover:flex-1 group-hover:gap-2 group-hover:border-x-8 group-hover:border-y-[16px] group-hover:border-white">
-            <RateSlider
-              tempRate={tempRate}
-              setTempRate={setTempRate}
-              // @ts-ignore
-              handleRateChangeEnd={handleRateChangeEnd}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium text-slate-500 transition-colors group-hover:bg-sky-600 group-hover:text-white">
-              <div className="flex items-baseline">
-                {rate.toFixed(2)}
-                <span className="relative -bottom-[0.2rem] font-sans  text-sm ">
-                  x
-                </span>
+          >
+            -
+          </button>
+          <div
+            className="group relative flex cursor-pointer flex-col self-center"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <div
+              className={`absolute bottom-full -my-2 overflow-hidden rounded-lg bg-white pl-4 shadow-md 
+            ${showSlider ? "flex flex-1 gap-2 border-x-8 border-y-[16px] border-white" : "hidden"}`}
+            >
+              <RateSlider
+                tempRate={tempRate}
+                setTempRate={setTempRate}
+                // @ts-ignore
+                handleRateChangeEnd={handleRateChangeEnd}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium text-slate-500 transition-colors group-hover:bg-sky-600 group-hover:text-white">
+                <div className="flex items-baseline">
+                  {rate.toFixed(2)}
+                  <span className="relative -bottom-[0.2rem] font-sans  text-sm ">
+                    x
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <button
-          onClick={() => {
-            handleRateChangeEnd([Math.min(2, rate + 0.25)])
-          }}
-          disabled={rate >= 2}
-          className={`flex h-6 w-6 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium transition-colors
+          <button
+            onClick={() => {
+              handleRateChangeEnd([Math.min(2, rate + 0.25)])
+            }}
+            disabled={rate >= 2}
+            className={`flex h-6 w-6 items-center justify-center rounded-full border border-sky-300 bg-white text-center text-xs font-medium transition-colors
             ${
               rate >= 2
                 ? "cursor-not-allowed text-slate-400 opacity-50"
                 : "text-slate-500 hover:bg-sky-600 hover:text-white"
             }`}
-        >
-          +
-        </button>
+          >
+            +
+          </button>
+        </div>
       </div>
     </>
   )
