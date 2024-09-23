@@ -5,6 +5,8 @@ import "@/styles/globals.css"
 import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui"
 import "@/polyfills"
+import { Analytics } from "@vercel/analytics/react"
+
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -35,6 +37,7 @@ export default function RootLayout({
       >
         <GlobalNav>{children}</GlobalNav>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   )
