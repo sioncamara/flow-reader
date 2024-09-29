@@ -452,7 +452,7 @@ const SpeechController: React.FC = () => {
     <>
       <div
         ref={speechControllerRef}
-        className="fixed bottom-1 z-50 flex w-72 items-center justify-around gap-6  self-center rounded-lg bg-white p-2 px-6 shadow-md"
+        className=" relative flex w-72 items-center justify-around gap-6 self-center rounded-lg bg-white p-2 px-6 shadow-md"
       >
         <div className="mr-3">
           <SelectVoice

@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui"
 import "@/polyfills"
 import { Analytics } from "@vercel/analytics/react"
 
-
 const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",

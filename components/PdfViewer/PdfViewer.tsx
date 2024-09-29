@@ -235,59 +235,65 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   }
 
   return (
-    <div className="flex flex-auto flex-col pb-[16px]">
+    <div className="flex flex-auto flex-col gap-3 pb-2">
       {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
-      <SpeechController />
-      <AutoSizer>
-        {({ height, width }) => {
-          const pageScale = width / (pageWidth || 1)
+      <div className="relative left-1/2 flex max-w-[120ch] flex-auto -translate-x-1/2 transform flex-col ">
+        <AutoSizer>
+          {({ height, width }) => {
+            const pageScale = width / (pageWidth || 1)
 
-          return (
-            <div className="custom-read-aloud relative min-w-fit flex-auto">
-              {file && (
-                <Document
-                  file={file}
-                  onItemClick={handleTocSelect}
-                  onLoadSuccess={loadAndStorePdf}
-                  onError={() => "An error occurred in the Document component"}
-                >
-                  {numPages && (
-                    <>
-                      {hasOutline && (
-                        <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
-                          <Image
-                            src="/toc.svg"
-                            alt="Table of Contents"
-                            className="mr-[16px] self-end"
-                            width={48}
-                            height={48}
-                          />
-                          <div className=" mr-5 max-h-0 max-w-0 overflow-hidden transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
-                            <Outline
-                              className="space-y-6 rounded-lg bg-slate-100/30 p-4"
-                              onItemClick={handleTocSelect}
+            return (
+              <div className="custom-read-aloud relative min-w-fit flex-auto">
+                {file && (
+                  <Document
+                    file={file}
+                    onItemClick={handleTocSelect}
+                    onLoadSuccess={loadAndStorePdf}
+                    onError={() =>
+                      "An error occurred in the Document component"
+                    }
+                  >
+                    {numPages && (
+                      <>
+                        {hasOutline && (
+                          <div className="group absolute right-[16px] top-[24px] z-50 flex  min-h-24 min-w-24 flex-col">
+                            <Image
+                              src="/toc.svg"
+                              alt="Table of Contents"
+                              className="mr-[16px] self-end"
+                              width={48}
+                              height={48}
                             />
+                            <div className=" mr-5 max-h-0 max-w-0 overflow-hidden transition-opacity duration-300 group-hover:max-h-[70vh] group-hover:max-w-[80vw] group-hover:overflow-y-auto group-hover:bg-white group-hover:opacity-100 group-hover:sm:max-h-[80vh] group-hover:sm:max-w-[70vw] group-hover:xl:max-h-[90vh] group-hover:xl:max-w-[70vw]">
+                              <Outline
+                                className="space-y-6 rounded-lg bg-slate-100/30 p-4"
+                                onItemClick={handleTocSelect}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      <PdfPageList
-                        height={height}
-                        width={width}
-                        numPages={numPages}
-                        pageHeight={pageHeight}
-                        pageScale={pageScale}
-                        handleItemsRendered={handleItemsRendered}
-                        setListRef={setListRef}
-                        setOuterListRef={setOuterListRef}
-                      />
-                    </>
-                  )}
-                </Document>
-              )}
-            </div>
-          )
-        }}
-      </AutoSizer>
+                        )}
+                        <PdfPageList
+                          height={height}
+                          width={width}
+                          numPages={numPages}
+                          pageHeight={pageHeight}
+                          pageScale={pageScale}
+                          handleItemsRendered={handleItemsRendered}
+                          setListRef={setListRef}
+                          setOuterListRef={setOuterListRef}
+                        />
+                      </>
+                    )}
+                  </Document>
+                )}
+              </div>
+            )
+          }}
+        </AutoSizer>
+      </div>
+      <div className="flex flex-shrink flex-col items-center">
+        <SpeechController />
+      </div>
     </div>
   )
 }
