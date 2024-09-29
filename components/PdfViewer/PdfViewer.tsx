@@ -18,6 +18,7 @@ import DragNdrop from "../DragNdrop"
 import PdfPageList from "./PdfPageList"
 import { SpeechController } from "../SpeechController"
 import { useRemoteStore } from "@/store/useRemoteStore"
+import { getScrollbarWidth } from "@/lib/utils"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -62,6 +63,15 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     listRef.current = ref
     setListStoreRef(ref)
   }
+
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const scrollbarWidthRef = useRef<number>(16)
+
+  useEffect(() => {
+    scrollbarWidthRef.current = getScrollbarWidth()
+  }, [])
 
   useEffect(() => {
     if (providedPdf) {
@@ -159,85 +169,110 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     [],
   )
 
-  const handleItemsRendered = ({
-    visibleStartIndex,
-    visibleStopIndex,
-  }: {
-    visibleStartIndex: number
-    visibleStopIndex: number
-  }) => {
-    const { start: prevVisibleStartValue, stop: prevVisibleStopValue } =
-      visibleItemsRef.current
+  const handleItemsRendered = useCallback(
+    ({
+      visibleStartIndex,
+      visibleStopIndex,
+    }: {
+      visibleStartIndex: number
+      visibleStopIndex: number
+    }) => {
+      const { start: prevVisibleStartValue, stop: prevVisibleStopValue } =
+        visibleItemsRef.current
+      visibleItemsRef.current = {
+        start: visibleStartIndex,
+        stop: visibleStopIndex,
+      }
 
-    // console.log(
-    //   `Previous visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
-    // )
-
-    if (
-      prevVisibleStartValue !== visibleStartIndex ||
-      prevVisibleStopValue !== visibleStopIndex
-    ) {
-      // console.log(
-      //   `%cPrevious visible range: ${prevVisibleStartValue}-${prevVisibleStopValue} => new range: ${visibleStartIndex}-${visibleStopIndex}`,
-      //   "color: turquoise; font-weight: bold;",
-      // )
-
-      // on resize, will jump to far away page, and this function is run before the previous page index is stored in visibleItemsRef.current
-      // think it might run after too since if I remove I get brought to a new page on scroll
       if (
-        Math.abs(prevVisibleStartValue - visibleStartIndex) > 3 ||
-        Math.abs(prevVisibleStopValue - visibleStopIndex) > 3
+        (Math.abs(prevVisibleStartValue - visibleStartIndex) > 3 ||
+          Math.abs(prevVisibleStopValue - visibleStopIndex) > 3) &&
+        !isUserScrolling
       ) {
-        console.log("Programatically scrolled to a far away page")
+        console.log("Programmatically scrolled to a far away page")
         return
       }
-      // could add logic specifically for mobile/smaller viewport down the line
-      const isScrollingDown =
-        prevVisibleStartValue < visibleStartIndex ||
-        prevVisibleStopValue < visibleStopIndex
 
-      const isScrollingUp =
-        prevVisibleStartValue > visibleStartIndex ||
-        prevVisibleStopValue > visibleStopIndex
+      if (
+        prevVisibleStartValue !== visibleStartIndex ||
+        prevVisibleStopValue !== visibleStopIndex
+      ) {
+        const isScrollingDown =
+          prevVisibleStartValue < visibleStartIndex ||
+          prevVisibleStopValue < visibleStopIndex
 
-      if (isScrollingDown) {
-        currPageIndexRef.current = visibleStartIndex
-        setReadingPageIndex(currPageIndexRef.current)
-        // console.log(
-        //   `%cDuring scroll down, reading page index set to: ${currPageIndexRef.current}`,
-        //   "color: blue; font-weight: bold;",
-        // )
-        if (fingerprint)
-          localStorage.setItem(
-            `pageIndex-${fingerprint}`,
-            currPageIndexRef.current.toString(),
-          )
+        const isScrollingUp =
+          prevVisibleStartValue > visibleStartIndex ||
+          prevVisibleStopValue > visibleStopIndex
+
+        if (isScrollingDown) {
+          currPageIndexRef.current = visibleStartIndex
+          setReadingPageIndex(currPageIndexRef.current)
+          if (fingerprint)
+            localStorage.setItem(
+              `pageIndex-${fingerprint}`,
+              currPageIndexRef.current.toString(),
+            )
+        }
+
+        if (isScrollingUp) {
+          currPageIndexRef.current = visibleStopIndex
+          setReadingPageIndex(currPageIndexRef.current)
+          if (fingerprint)
+            localStorage.setItem(
+              `pageIndex-${fingerprint}`,
+              currPageIndexRef.current.toString(),
+            )
+        }
       }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isUserScrolling],
+  )
 
-      if (isScrollingUp) {
-        currPageIndexRef.current = visibleStopIndex
-        setReadingPageIndex(currPageIndexRef.current)
-        // console.log(
-        //   `%cDuring scroll up, reading page index set to: ${currPageIndexRef.current}`,
-        //   "color: blue; font-weight: bold;",
-        // )
-        if (fingerprint)
-          localStorage.setItem(
-            `pageIndex-${fingerprint}`,
-            currPageIndexRef.current.toString(),
-          )
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const { clientX } = event
+      const containerRect = container.getBoundingClientRect()
+      const scrollbarStartX = containerRect.right - scrollbarWidthRef.current
+      const scrollbarEndX = containerRect.right
+
+      if (clientX >= scrollbarStartX && clientX <= scrollbarEndX) {
+        setIsUserScrolling(true)
       }
     }
-    visibleItemsRef.current = {
-      start: visibleStartIndex,
-      stop: visibleStopIndex,
+
+    const handleMouseUp = () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsUserScrolling(false)
+      }, 100)
     }
-  }
+
+    container.addEventListener("mousedown", handleMouseDown)
+    window.addEventListener("mouseup", handleMouseUp)
+
+    return () => {
+      container.removeEventListener("mousedown", handleMouseDown)
+      window.removeEventListener("mouseup", handleMouseUp)
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="flex flex-auto flex-col gap-3 pb-2">
       {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
-      <div className="relative left-1/2 flex max-w-[120ch] flex-auto -translate-x-1/2 transform flex-col ">
+      <div
+        ref={containerRef}
+        className="relative left-1/2 flex max-w-[120ch] flex-auto -translate-x-1/2 transform flex-col overflow-auto"
+      >
         <AutoSizer>
           {({ height, width }) => {
             const pageScale = width / (pageWidth || 1)
