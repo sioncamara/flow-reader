@@ -41,6 +41,22 @@ function isNumberOnly(text: string | null) {
   return /^\d+$/.test(text || "")
 }
 
+export function getScrollbarWidth(): number {
+  const outer = document.createElement("div")
+  outer.style.visibility = "hidden"
+  outer.style.overflow = "scroll"
+  document.body.appendChild(outer)
+
+  const inner = document.createElement("div")
+  outer.appendChild(inner)
+
+  const scrollbarWidth = outer.offsetWidth - inner.offsetWidth
+
+  outer.parentNode?.removeChild(outer)
+
+  return scrollbarWidth
+}
+
 export async function getCoverImage(page: PDFPageProxy): Promise<string> {
   var scale = 1.5
   var viewport = page.getViewport({ scale: scale })
