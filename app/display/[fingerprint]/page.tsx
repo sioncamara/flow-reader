@@ -34,7 +34,7 @@ const PdfPage = () => {
   }, [fingerprint])
 
   return (
-    <div className="flex flex-auto sm:pb-[16px] lg:pb-[50px]">
+    <div className="flex flex-auto">
       {pdf ? (
         <PdfViewer providedPdf={pdf} fingerprint={fingerprint as string} />
       ) : (
