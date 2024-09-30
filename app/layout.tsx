@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Toaster } from "@/components/ui"
 import "@/polyfills"
 import { Analytics } from "@vercel/analytics/react"
+import Hotjar from "@/components/HotJar"
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ export default function RootLayout({
           fontSans.variable,
         )}
       >
+        <Hotjar />
         <GlobalNav>{children}</GlobalNav>
         <Toaster />
         <Analytics />
