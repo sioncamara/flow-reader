@@ -81,12 +81,14 @@ const DragNdrop = ({ onFilesSelected }: DragNdropProps) => {
           className="flex flex-col items-center dark:text-slate-400
 "
         >
-          <div className="-mb-3 flex">
-            <AiOutlineCloudUpload className="mr-3 text-[36px]  group-hover:text-teal-500 dark:group-hover:text-teal-800" />
-            <span className="font-semibold ">Drag and drop your PDF file</span>
+          <div className="-mb-3 flex min-w-80 justify-center">
+            <AiOutlineCloudUpload className="mr-3 text-[36px] text-slate-400 group-hover:text-teal-500 dark:group-hover:text-teal-800" />
+            <span className="font-semibold text-slate-500">
+              Drag into the box
+            </span>
           </div>
-          <span className="">or</span>
-          <span className="font-semibold group-hover:text-teal-500  dark:group-hover:text-teal-800">
+          <span className="text-slate-400">or</span>
+          <span className="font-semibold text-slate-500 group-hover:text-teal-500  dark:group-hover:text-teal-800">
             Upload from Storage
           </span>
         </div>
