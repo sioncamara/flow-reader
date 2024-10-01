@@ -19,6 +19,8 @@ import PdfPageList from "./PdfPageList"
 import { SpeechController } from "../SpeechController"
 import { useRemoteStore } from "@/store/useRemoteStore"
 import { getScrollbarWidth } from "@/lib/utils"
+import { useRouter } from "next/navigation"
+import { toast } from "../ui/use-toast"
 
 export type PdfStore = DBSchema & {
   pdfs: {
@@ -69,6 +71,8 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const scrollbarWidthRef = useRef<number>(16)
 
+  const router = useRouter()
+
   useEffect(() => {
     scrollbarWidthRef.current = getScrollbarWidth()
   }, [])
@@ -117,7 +121,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
     setFile(selectedFiles[0])
   }
 
-  async function loadAndStorePdf(pdf: PDFDocumentProxy): Promise<void> {
+  async function loadOrStorePdf(pdf: PDFDocumentProxy): Promise<void> {
     setNumPages(pdf.numPages)
     const firstPage = await pdf.getPage(1)
     const viewport = firstPage.getViewport({ scale: 1 })
@@ -132,11 +136,20 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
 
     try {
       const db = await openDB<PdfStore>(dbName)
-      const fingerprint = pdf.fingerprints[0]
+      const currFingerprint = pdf.fingerprints[0]
 
-      const existingEntry = await db.get(storeName, fingerprint)
+      const existingEntry = await db.get(storeName, currFingerprint)
       if (existingEntry) {
-        console.log("PDF already stored in IndexedDB")
+        console.log("PDF already stored in IndexedDB...bring user to pdf")
+        if (currFingerprint !== fingerprint) {
+          toast({
+            title: "Hi there 👋",
+            description: "Double click on any word to start reading.",
+            duration: 5000,
+          })
+          router.push(`/display/${currFingerprint}`)
+        }
+
         return
       }
 
@@ -144,8 +157,14 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
       const blob = new Blob([buffer], { type: "application/pdf" })
       const coverImage = await getCoverImage(await pdf.getPage(1))
 
-      await db.add(storeName, { pdfFile: blob, coverImage }, fingerprint)
-      console.log("PDF & Image stored in IndexedDB")
+      await db.add(storeName, { pdfFile: blob, coverImage }, currFingerprint)
+      console.log("PDF & Image stored in IndexedDB...bring user to pdf")
+      toast({
+        title: "Hi there 👋",
+        description: "Double click on any word to start reading.",
+        duration: 5000,
+      })
+      router.push(`/display/${currFingerprint}`)
     } catch (error) {
       console.error("Error storing PDF in IndexedDB:", error)
     }
@@ -269,6 +288,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
   return (
     <div className="flex flex-auto flex-col gap-3 pb-2">
       {!providedPdf && <DragNdrop onFilesSelected={onFilesSelected} />}
+
       <div
         ref={containerRef}
         className="relative left-1/2 flex max-w-[120ch] flex-auto -translate-x-1/2 transform flex-col overflow-auto"
@@ -283,7 +303,7 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
                   <Document
                     file={file}
                     onItemClick={handleTocSelect}
-                    onLoadSuccess={loadAndStorePdf}
+                    onLoadSuccess={loadOrStorePdf}
                     onError={() =>
                       "An error occurred in the Document component"
                     }
@@ -326,9 +346,12 @@ const PdfViewer = ({ providedPdf, fingerprint }: PdfViewerProps) => {
           }}
         </AutoSizer>
       </div>
-      <div className="flex flex-shrink flex-col items-center">
-        <SpeechController />
-      </div>
+
+      {providedPdf && (
+        <div className="flex flex-shrink flex-col items-center">
+          <SpeechController />
+        </div>
+      )}
     </div>
   )
 }
