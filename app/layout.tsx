@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui"
 import "@/polyfills"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import Hotjar from "@/components/HotJar"
+import { CSPostHogProvider } from "@/components/CSPostHogProvider"
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -36,11 +36,12 @@ export default function RootLayout({
           fontSans.variable,
         )}
       >
-        <Hotjar />
-        <GlobalNav>{children}</GlobalNav>
-        <Toaster />
-        <Analytics />
-        <SpeedInsights />
+        <CSPostHogProvider>
+          <GlobalNav>{children}</GlobalNav>
+          <Toaster />
+          <Analytics />
+          <SpeedInsights />
+        </CSPostHogProvider>
       </body>
     </html>
   )
