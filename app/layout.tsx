@@ -8,6 +8,7 @@ import "@/polyfills"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { CSPostHogProvider } from "@/components/CSPostHogProvider"
+import Hotjar from "@/components/HotJar"
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -38,6 +39,7 @@ export default function RootLayout({
       >
         <CSPostHogProvider>
           <GlobalNav>{children}</GlobalNav>
+          <Hotjar />
           <Toaster />
           <Analytics />
           <SpeedInsights />
