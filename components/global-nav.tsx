@@ -38,7 +38,7 @@ export function GlobalNav({
   children: React.ReactNode
 }>) {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-slate-100/40 dark:bg-slate-900">
+    <div className="flex h-full w-full flex-col bg-slate-100/40 dark:bg-slate-900">
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-white sm:flex dark:border-slate-950 dark:bg-slate-950">
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <TooltipProvider>
