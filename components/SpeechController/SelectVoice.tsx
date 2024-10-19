@@ -109,7 +109,7 @@ const SelectVoice = ({
             {formattedSelectedName}
           </span>
         </div>
-        <SelectContent className="-ml-24">
+        <SelectContent className=" -ml-10 md:-ml-48">
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white pb-2 dark:border-slate-700 dark:bg-slate-800">
             <SelectLanguage lang={lang} setLang={setLang} />
           </div>
