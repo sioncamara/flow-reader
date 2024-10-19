@@ -8,7 +8,7 @@ import "@/polyfills"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { CSPostHogProvider } from "@/components/CSPostHogProvider"
-import Hotjar from "@/components/HotJar"
+import HotJar from "@/components/HotJar"
 
 const fontSans = Inter({
   subsets: ["latin"],
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="h-full bg-white dark:bg-slate-900">
+    <html lang="en" className="h-[100svh] bg-white dark:bg-slate-900">
       <body
         className={cn(
           "h-full bg-background font-sans antialiased",
@@ -39,7 +39,7 @@ export default function RootLayout({
       >
         <CSPostHogProvider>
           <GlobalNav>{children}</GlobalNav>
-          <Hotjar />
+          <HotJar />
           <Toaster />
           <Analytics />
           <SpeedInsights />

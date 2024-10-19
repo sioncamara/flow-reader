@@ -1,7 +1,7 @@
 "use client"
 import { useEffect } from "react"
 
-const Hotjar = () => {
+const HotJar = () => {
   useEffect(() => {
     // Insert Hotjar tracking code into the head section
     const script = document.createElement("script")
@@ -26,4 +26,4 @@ const Hotjar = () => {
   return null
 }
 
-export default Hotjar
+export default HotJar
