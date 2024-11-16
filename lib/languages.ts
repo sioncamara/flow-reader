@@ -30,6 +30,7 @@ export const languageMap: { [key: string]: string } = {
   id: "Bahasa Indonesia", // Indonesian
   is: "Íslenska", // Icelandic
   it: "Italiano", // Italian
+  iu: "ᐃᓄᒃᑎᑐᑦ", // Inuktitut
   ja: "日本語", // Japanese
   jv: "Basa Jawa", // Javanese
   ka: "ქართული", // Georgian
