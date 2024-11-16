@@ -46,16 +46,17 @@ const SelectLanguage = ({
             return (
               <SelectGroup key={key}>
                 <SelectLabel>
-                  {languageMap[key].charAt(0).toUpperCase() +
-                    languageMap[key].slice(1)}
+                  {languageMap[key]
+                    ? languageMap[key].charAt(0).toUpperCase() + languageMap[key].slice(1)
+                    : key.toUpperCase()}
                 </SelectLabel>
                 {languages.map((lang) => (
                   <SelectItem key={lang} value={lang}>
-                    {`${languageMap[key].toLowerCase()} (${getDialect(lang)})`}
+                    {`${languageMap[key]?.toLowerCase() || key} (${getDialect(lang)})`}
                   </SelectItem>
                 ))}
               </SelectGroup>
-            )
+            );
           }
         })}
       </SelectContent>
